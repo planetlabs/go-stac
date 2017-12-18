@@ -1,0 +1,67 @@
+{
+    "_links": {
+        "_self": "https://api.planet.com/data/v1/item-types/PSScene4Band/items/20171025_084816_1014", 
+        "thumbnail": "https://api.planet.com/data/v1/item-types/PSScene4Band/items/20171025_084816_1014/thumb"
+    }, 
+    "geometry": {
+        "coordinates": [
+            [
+                [
+                    13.047038352564515, 
+                    -0.987705549199317
+                ], 
+                [
+                    13.051634925475282, 
+                    -0.964690436105154
+                ], 
+                [
+                    13.280248370939605, 
+                    -1.00982482587849
+                ], 
+                [
+                    13.269683645282768, 
+                    -1.063708152037994
+                ], 
+                [
+                    13.26789025397857, 
+                    -1.072573800591329
+                ], 
+                [
+                    13.039357518696429, 
+                    -1.02767867820866
+                ], 
+                [
+                    13.047038352564515, 
+                    -0.987705549199317
+                ]
+            ]
+        ], 
+        "type": "Polygon"
+    }, 
+    "id": "20171025_084816_1014", 
+    "properties": {
+        "observed": "1509084288.832755", 
+        "acquired": "1509084288.832755", 
+        "anomalous_pixels": 0.47, 
+        "cloud_cover": 0.84, 
+        "columns": 8939, 
+        "epsg_code": 32733, 
+        "ground_control": false, 
+        "gsd": 3.9, 
+        "instrument": "PS2", 
+        "item_type": "PSScene4Band", 
+        "origin_x": 281820, 
+        "origin_y": 9893313, 
+        "pixel_resolution": 3, 
+        "provider": "planetscope", 
+        "quality_category": "test", 
+        "rows": 3974, 
+        "satellite_id": "1014", 
+        "strip_id": "863775", 
+        "sun_azimuth": 111.5, 
+        "sun_elevation": 57.5, 
+        "usable_data": 0, 
+        "view_angle": 1
+    }, 
+    "type": "Feature"
+}
