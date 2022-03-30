@@ -1,0 +1,15 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Feature",
+  "id": "valid-item",
+  "bbox": [0, 0, 0, 0],
+  "geometry": {
+    "type": "Point",
+    "coordinates": [0, 0]
+  },
+  "properties": {
+    "datetime": "2022-03-22T00:00:00Z"
+  },
+  "links": [],
+  "assets": {}
+}
