@@ -1,0 +1,16 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Collection",
+  "id": "valid-collection",
+  "description": "A valid collection",
+  "license": "CC-BY-4.0",
+  "extent": {
+    "spatial": {
+      "bbox": [[0, 0, 0, 0]]
+    },
+    "temporal": {
+      "interval": [["2022-03-22T00:00:00Z", "2022-03-23T00:00:00Z"]]
+    }
+  },
+  "links": []
+}
