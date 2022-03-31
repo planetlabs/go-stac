@@ -83,6 +83,10 @@ func New(options *Options) *Validator {
 
 func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
 	log := logrus.WithField("schema", schemaUrl)
+	if schema, ok := v.cache.Load(schemaUrl); ok {
+		log.Debug("schema cache hit")
+		return schema.(*jsonschema.Schema), nil
+	}
 	schema, err, _ := v.group.Do(schemaUrl, func() (interface{}, error) {
 		value, ok := v.cache.Load(schemaUrl)
 		if ok {
