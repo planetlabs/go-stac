@@ -141,6 +141,9 @@ func (v *Validator) validate(resourceUrl string, resource crawler.Resource) erro
 	}
 	coreErr := coreSchema.Validate(map[string]interface{}(resource))
 	if coreErr != nil {
+		if err, ok := coreErr.(*jsonschema.ValidationError); ok {
+			return newValidationError(resourceUrl, err)
+		}
 		return coreErr
 	}
 
