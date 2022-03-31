@@ -5,7 +5,7 @@ Utilities for working with Spatio-Temporal Asset Catalog ([STAC](https://stacspe
 [![Go Reference](https://pkg.go.dev/badge/github.com/planetlabs/go-stac.svg)](https://pkg.go.dev/github.com/planetlabs/go-stac)
 ![Tests](https://github.com/planetlabs/go-stac/actions/workflows/test.yml/badge.svg)
 
-The `stac` command line utility can be used to crawl and validate STAC metadata.  In addition, the [`github.com/planetlabs/go-stac`](https://github.com/planetlabs/go-stac) module can be used in Go projects.
+The `stac` command line utility can be used to crawl and validate STAC metadata.  In addition, the [`github.com/planetlabs/go-stac`](https://pkg.go.dev/github.com/planetlabs/go-stac) module can be used in Go projects.
 
 ## Command Line Interface
 
