@@ -2,25 +2,32 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"sync"
 
 	"github.com/planetlabs/go-stac/pkg/crawler"
-	"github.com/planetlabs/go-stac/pkg/validator"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
-var recursionValues = []string{string(crawler.All), string(crawler.None), string(crawler.Children)}
+type Stats struct {
+	Catalogs    uint64            `json:"catalogs"`
+	Collections uint64            `json:"collections"`
+	Items       uint64            `json:"items"`
+	Extensions  map[string]uint64 `json:"extensions"`
+}
 
-var validateCommand = &cli.Command{
-	Name:        "validate",
-	Usage:       "Validate STAC metadata",
-	Description: "Validates that STAC metadata is conforms with the specification.",
+var statsCommand = &cli.Command{
+	Name:        "stats",
+	Usage:       "Generate STAC statistics",
+	Description: "Crawls STAC resources and reports on statistics.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    flagEntry,
-			Usage:   "Path to STAC resource (catalog, collection, or item) to validate",
+			Usage:   "Path to STAC resource (catalog, collection, or item) to stats",
 			EnvVars: []string{toEnvVar(flagEntry)},
 		},
 		&cli.IntFlag{
@@ -67,17 +74,39 @@ var validateCommand = &cli.Command{
 			return fmt.Errorf("missing --%s", flagEntry)
 		}
 
-		v := validator.New(&validator.Options{
+		mutext := &sync.Mutex{}
+		stats := &Stats{Extensions: map[string]uint64{}}
+
+		visitor := func(location string, resource crawler.Resource) error {
+			mutext.Lock()
+			defer mutext.Unlock()
+
+			switch resource.Type() {
+			case crawler.Catalog:
+				stats.Catalogs += 1
+			case crawler.Collection:
+				stats.Collections += 1
+			case crawler.Item:
+				stats.Items += 1
+			}
+
+			for _, extension := range resource.Extensions() {
+				count := stats.Extensions[extension]
+				stats.Extensions[extension] = count + 1
+			}
+			return nil
+		}
+
+		c := crawler.NewWithOptions(entryPath, visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
-		err := v.Validate(context.Background(), entryPath)
+
+		err := c.Crawl(context.Background())
 		if err != nil {
-			if validationErr, ok := err.(*validator.ValidationError); ok {
-				return fmt.Errorf("%#v\n", validationErr)
-			}
-			return fmt.Errorf("validation failed:\n%#v\n", err)
+			return err
 		}
-		return nil
+
+		return json.NewEncoder(os.Stdout).Encode(stats)
 	},
 }

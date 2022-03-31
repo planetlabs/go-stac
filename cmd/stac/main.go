@@ -98,6 +98,7 @@ func main() {
 		Description: "Utilities for working with Spatio-Temporal Asset Catalog (STAC) metadata.",
 		Commands: []*cli.Command{
 			validateCommand,
+			statsCommand,
 		},
 	}
 
