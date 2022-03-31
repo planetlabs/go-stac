@@ -73,3 +73,37 @@ func (s *Suite) TestValidCases() {
 func TestSuite(t *testing.T) {
 	suite.Run(t, &Suite{})
 }
+
+func ExampleValidator_Validate_children() {
+	v := validator.New(&validator.Options{
+		Concurrency: 1,
+		Recursion:   crawler.Children,
+	})
+
+	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
+	fmt.Printf("validation errors:\n%#v\n", err)
+	// Output:
+	// validation errors:
+	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
+	//   [I#] [S#/allOf/0] allOf failed
+	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
+	//       [I#] [S#/definitions/core/allOf/2] allOf failed
+	//         [I#] [S#/definitions/core/allOf/2/required] missing properties: 'id'
+}
+
+func ExampleValidator_Validate_single() {
+	v := validator.New(&validator.Options{
+		Concurrency: 1,
+		Recursion:   crawler.None,
+	})
+
+	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")
+	fmt.Printf("validation errors:\n%#v\n", err)
+	// Output:
+	// validation errors:
+	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
+	//   [I#] [S#/allOf/0] allOf failed
+	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
+	//       [I#] [S#/definitions/core/allOf/2] allOf failed
+	//         [I#] [S#/definitions/core/allOf/2/required] missing properties: 'id'
+}

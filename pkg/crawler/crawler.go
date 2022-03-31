@@ -1,3 +1,4 @@
+// Package crawler implements a STAC resource crawler.
 package crawler
 
 import (
@@ -126,6 +127,7 @@ func resolveURL(baseUrl string, resourceUrl string) (string, error) {
 
 type Visitor func(string, Resource) error
 
+// Crawler crawls STAC resources.
 type Crawler struct {
 	url         string
 	visitor     Visitor
@@ -134,23 +136,35 @@ type Crawler struct {
 	concurrency int
 }
 
+// Options for creating a crawler.
 type Options struct {
-	Recursion   RecursionType
+	// Limit to the number of resources to fetch and visit concurrently.
 	Concurrency int
+
+	// Strategy to use when crawling linked resources.  Use None to visit
+	// a single resource.  Use Children to only visit linked item/child resources.
+	// Use All to visit parent and child resources.
+	Recursion RecursionType
 }
 
+// DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
 	Recursion:   Children,
 	Concurrency: 1,
 }
 
-func New(resourceURL string, visitor Visitor) *Crawler {
-	return NewWithOptions(resourceURL, visitor, DefaultOptions)
+// New creates a crawler with the default options.
+//
+// The resource can be a file path or URL.  The visitor will be called for
+// each resource resolved.
+func New(resource string, visitor Visitor) *Crawler {
+	return NewWithOptions(resource, visitor, DefaultOptions)
 }
 
-func NewWithOptions(resourceUrl string, visitor Visitor, options *Options) *Crawler {
+// NewWithOptions creates a crawler with the given options.
+func NewWithOptions(resource string, visitor Visitor, options *Options) *Crawler {
 	return &Crawler{
-		url:         resourceUrl,
+		url:         resource,
 		visitor:     visitor,
 		visited:     &sync.Map{},
 		recursion:   options.Recursion,
@@ -158,6 +172,7 @@ func NewWithOptions(resourceUrl string, visitor Visitor, options *Options) *Craw
 	}
 }
 
+// Crawl calls the visitor for each resolved resource.
 func (c *Crawler) Crawl(ctx context.Context) error {
 	worker := &workgroup.Worker[string]{
 		Context: ctx,

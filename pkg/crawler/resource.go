@@ -13,8 +13,10 @@ const (
 	Collection = ResourceType("collection")
 )
 
+// Resource represents a STAC catalog, collection, or item.
 type Resource map[string]interface{}
 
+// Type returns the specific resource type.
 func (r Resource) Type() ResourceType {
 	value, ok := r["type"]
 	if !ok {
@@ -36,6 +38,7 @@ func (r Resource) Type() ResourceType {
 	}
 }
 
+// Version returns the STAC version.
 func (r Resource) Version() string {
 	value, ok := r[versionKey]
 	if !ok {
@@ -48,8 +51,10 @@ func (r Resource) Version() string {
 	return version
 }
 
+// Link represents a link to a resource.
 type Link map[string]string
 
+// Links returns the resource links.
 func (r Resource) Links() []Link {
 	links := []Link{}
 	value, ok := r["links"]
@@ -78,6 +83,7 @@ func (r Resource) Links() []Link {
 	return links
 }
 
+// Extensions returns the resource extension URLs.
 func (r Resource) Extensions() []string {
 	extensions := []string{}
 	value, ok := r[extensionsKey]

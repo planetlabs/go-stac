@@ -1,3 +1,4 @@
+// Package validator implements a STAC resource validation.
 package validator
 
 import (

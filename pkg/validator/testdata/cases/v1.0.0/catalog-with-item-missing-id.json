@@ -1,0 +1,12 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Catalog",
+  "id": "valid-catalog",
+  "description": "A valid catalog",
+  "links": [
+    {
+      "rel": "item",
+      "href": "./item-missing-id.json"
+    }
+  ]
+}
