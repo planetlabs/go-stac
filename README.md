@@ -1,18 +1,19 @@
 # STAC Utilities
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/planetlabs/go-stac.svg)](https://pkg.go.dev/github.com/planetlabs/go-stac)
+Utilities for working with Spatio-Temporal Asset Catalog ([STAC](https://stacspec.org/)) resources.
 
-This module ([`github.com/planetlabs/go-stac`](https://github.com/planetlabs/go-stac)) provides a utilities for working with Spatio-Temporal Asset Catalog ([STAC](https://stacspec.org/)) resources.
+[![Go Reference](https://pkg.go.dev/badge/github.com/planetlabs/go-stac.svg)](https://pkg.go.dev/github.com/planetlabs/go-stac)
+![Tests](https://github.com/planetlabs/go-stac/actions/workflows/test.yml/badge.svg)
 
 The `stac` command line utility can be used to crawl and validate STAC metadata.  In addition, the [`github.com/planetlabs/go-stac`](https://github.com/planetlabs/go-stac) module can be used in Go projects.
 
-## CLI
+## Command Line Interface
 
 The `stac` program can be installed by downloading one of the archives from [the latest release](https://github.com/planetlabs/go-stac/releases).
 
 Extract the archive and place the `stac` executable somewhere on your path.  See a list of available commands by running `stac` in your terminal.
 
-For Mac users, if you get a message that `stac` can't be opened because Apple cannot check it for malicious software, you can allow access in your system preferences.  Under the Apple menu > Sytem Preferences, click Security & Privacy, then click General.  There you should see an "Allow Anyway" button.
+For Mac users, if you get a message that the program can't be opened because Apple cannot check it for malicious software, you can allow access in your system preferences.  Under the **Apple** menu > **Sytem Preferences**, click **Security & Privacy**, then click **General**.  There you should see an **Allow Anyway** button.
 
 ## Library Use
 
