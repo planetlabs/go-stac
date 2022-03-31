@@ -52,11 +52,33 @@ func (r *ecmaRegexp) String() string {
 	return r.re.String()
 }
 
+// Validator allows validation of STAC resources.
 type Validator struct {
 	concurrency int
 	recursion   crawler.RecursionType
 	cache       *sync.Map
 	group       *singleflight.Group
+}
+
+// Options for the Validator.
+type Options struct {
+	// Limit to the number of resources to fetch and validate concurrently.
+	Concurrency int
+
+	// Type of recursion to use when crawling linked resources.  Use crawler.None to visit
+	// a single resource.  Use crawler.Children to only visit linked item/child resources.
+	// Use crawler.All to visit parent and child resources.
+	Recursion crawler.RecursionType
+}
+
+// New creates a new Validator.
+func New(options *Options) *Validator {
+	return &Validator{
+		concurrency: options.Concurrency,
+		recursion:   options.Recursion,
+		group:       &singleflight.Group{},
+		cache:       &sync.Map{},
+	}
 }
 
 func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
@@ -82,26 +104,15 @@ func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
 	return schema.(*jsonschema.Schema), nil
 }
 
-type Options struct {
-	Concurrency int
-	Recursion   crawler.RecursionType
-}
-
-func New(options *Options) *Validator {
-	return &Validator{
-		concurrency: options.Concurrency,
-		recursion:   options.Recursion,
-		group:       &singleflight.Group{},
-		cache:       &sync.Map{},
-	}
-}
-
 func schemaUrl(version string, resourceType crawler.ResourceType) string {
 	return fmt.Sprintf("https://schemas.stacspec.org/v%s/%s-spec/json-schema/%s.json", version, resourceType, resourceType)
 }
 
-func (v *Validator) Validate(ctx context.Context, resourceUrl string) error {
-	c := crawler.NewWithOptions(resourceUrl, v.validate, &crawler.Options{
+// Validate validates a STAC resource.
+//
+// The resource can be a path to a local file or a URL.
+func (v *Validator) Validate(ctx context.Context, resource string) error {
+	c := crawler.NewWithOptions(resource, v.validate, &crawler.Options{
 		Concurrency: v.concurrency,
 		Recursion:   v.recursion,
 	})
