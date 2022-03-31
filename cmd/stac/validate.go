@@ -73,7 +73,10 @@ var validateCommand = &cli.Command{
 		})
 		err := v.Validate(context.Background(), entryPath)
 		if err != nil {
-			return fmt.Errorf("invalid STAC resource:\n%#v\n", err)
+			if validationErr, ok := err.(*validator.ValidationError); ok {
+				return fmt.Errorf("validation failed: %s\n%#v\n", validationErr.Resource, validationErr)
+			}
+			return fmt.Errorf("validation failed:\n%#v\n", err)
 		}
 		return nil
 	},

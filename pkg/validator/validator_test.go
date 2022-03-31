@@ -81,9 +81,10 @@ func ExampleValidator_Validate_children() {
 	})
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
-	fmt.Printf("validation errors:\n%#v\n", err)
+	validationErr := err.(*validator.ValidationError)
+	fmt.Printf("failed validation: %s\n%#v\n", validationErr.Resource, validationErr)
 	// Output:
-	// validation errors:
+	// failed validation: testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
@@ -98,9 +99,10 @@ func ExampleValidator_Validate_single() {
 	})
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")
-	fmt.Printf("validation errors:\n%#v\n", err)
+	validationErr := err.(*validator.ValidationError)
+	fmt.Printf("failed validation: %s\n%#v\n", validationErr.Resource, validationErr)
 	// Output:
-	// validation errors:
+	// failed validation: testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
