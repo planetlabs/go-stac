@@ -59,6 +59,7 @@ type Validator struct {
 	recursion   crawler.RecursionType
 	cache       *sync.Map
 	group       *singleflight.Group
+	compiler    *jsonschema.Compiler
 }
 
 // Options for the Validator.
@@ -74,12 +75,20 @@ type Options struct {
 
 // New creates a new Validator.
 func New(options *Options) *Validator {
-	return &Validator{
+	v := &Validator{
 		concurrency: options.Concurrency,
 		recursion:   options.Recursion,
 		group:       &singleflight.Group{},
 		cache:       &sync.Map{},
+		compiler:    jsonschema.NewCompiler(),
 	}
+	if v.concurrency == 0 {
+		v.concurrency = crawler.DefaultOptions.Concurrency
+	}
+	if v.recursion == "" {
+		v.recursion = crawler.DefaultOptions.Recursion
+	}
+	return v
 }
 
 func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
@@ -94,7 +103,7 @@ func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
 			log.Debug("schema cache hit")
 			return value, nil
 		}
-		schema, err := jsonschema.Compile(schemaUrl)
+		schema, err := v.compiler.Compile(schemaUrl)
 		if err != nil {
 			return nil, err
 		}

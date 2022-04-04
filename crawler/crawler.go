@@ -150,7 +150,7 @@ type Options struct {
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
 	Recursion:   Children,
-	Concurrency: 1,
+	Concurrency: runtime.GOMAXPROCS(0),
 }
 
 // New creates a crawler with the default options.
