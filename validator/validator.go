@@ -126,11 +126,11 @@ func schemaUrl(version string, resourceType crawler.ResourceType) string {
 //
 // The resource can be a path to a local file or a URL.
 func (v *Validator) Validate(ctx context.Context, resource string) error {
-	c := crawler.NewWithOptions(resource, v.validate, &crawler.Options{
+	c := crawler.NewWithOptions(v.validate, &crawler.Options{
 		Concurrency: v.concurrency,
 		Recursion:   v.recursion,
 	})
-	return c.Crawl(ctx)
+	return c.Crawl(ctx, resource)
 }
 
 func (v *Validator) validate(resourceUrl string, resource crawler.Resource) error {

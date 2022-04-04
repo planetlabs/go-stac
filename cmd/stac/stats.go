@@ -97,12 +97,12 @@ var statsCommand = &cli.Command{
 			return nil
 		}
 
-		c := crawler.NewWithOptions(entryPath, visitor, &crawler.Options{
+		c := crawler.NewWithOptions(visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
 
-		err := c.Crawl(context.Background())
+		err := c.Crawl(context.Background(), entryPath)
 		if err != nil {
 			return err
 		}

@@ -46,18 +46,6 @@ func normalizeUrl(resourceUrl string) (string, bool, error) {
 	return resourceUrl, false, nil
 }
 
-func load(resourceUrl string) (Resource, error) {
-	resourceUrl, isFilepath, err := normalizeUrl(resourceUrl)
-	if err != nil {
-		return nil, err
-	}
-
-	if isFilepath {
-		return loadFile(resourceUrl)
-	}
-	return loadUrl(resourceUrl)
-}
-
 func loadFile(resourcePath string) (Resource, error) {
 	data, readErr := ioutil.ReadFile(resourcePath)
 	if readErr != nil {
@@ -129,7 +117,7 @@ type Visitor func(string, Resource) error
 
 // Crawler crawls STAC resources.
 type Crawler struct {
-	url         string
+	fileMode    bool
 	visitor     Visitor
 	visited     *sync.Map
 	recursion   RecursionType
@@ -155,16 +143,14 @@ var DefaultOptions = &Options{
 
 // New creates a crawler with the default options.
 //
-// The resource can be a file path or URL.  The visitor will be called for
-// each resource resolved.
-func New(resource string, visitor Visitor) *Crawler {
-	return NewWithOptions(resource, visitor, DefaultOptions)
+// The visitor will be called for each resource resolved.
+func New(visitor Visitor) *Crawler {
+	return NewWithOptions(visitor, DefaultOptions)
 }
 
 // NewWithOptions creates a crawler with the given options.
-func NewWithOptions(resource string, visitor Visitor, options *Options) *Crawler {
+func NewWithOptions(visitor Visitor, options *Options) *Crawler {
 	return &Crawler{
-		url:         resource,
 		visitor:     visitor,
 		visited:     &sync.Map{},
 		recursion:   options.Recursion,
@@ -173,13 +159,20 @@ func NewWithOptions(resource string, visitor Visitor, options *Options) *Crawler
 }
 
 // Crawl calls the visitor for each resolved resource.
-func (c *Crawler) Crawl(ctx context.Context) error {
+//
+// The resource can be a file path or a URL.
+func (c *Crawler) Crawl(ctx context.Context, resource string) error {
+	resourceUrl, isFilepath, err := normalizeUrl(resource)
+	if err != nil {
+		return err
+	}
+	c.fileMode = isFilepath
 	worker := &workgroup.Worker[string]{
 		Context: ctx,
 		Limit:   c.concurrency,
 		Work:    c.crawl,
 	}
-	worker.Add(c.url)
+	worker.Add(resourceUrl)
 	return worker.Wait()
 }
 
@@ -195,7 +188,26 @@ func (c *Crawler) crawl(worker *workgroup.Worker[string], resourceUrl string) er
 	if !c.shouldVisit(resourceUrl) {
 		return nil
 	}
-	resource, loadErr := load(resourceUrl)
+
+	resourceUrl, isFilepath, err := normalizeUrl(resourceUrl)
+	if err != nil {
+		return err
+	}
+
+	var resource Resource
+	var loadErr error
+	if isFilepath {
+		if !c.fileMode {
+			return fmt.Errorf("cannot crawl file %s in non-file mode", resourceUrl)
+		}
+		resource, loadErr = loadFile(resourceUrl)
+	} else {
+		if c.fileMode {
+			return fmt.Errorf("cannot crawl URL %s in file mode", resourceUrl)
+		}
+		resource, loadErr = loadUrl(resourceUrl)
+	}
+
 	if loadErr != nil {
 		return loadErr
 	}
