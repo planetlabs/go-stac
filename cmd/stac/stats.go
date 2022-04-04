@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/planetlabs/go-stac/pkg/crawler"
+	"github.com/planetlabs/go-stac/crawler"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )

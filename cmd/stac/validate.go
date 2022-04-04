@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/planetlabs/go-stac/pkg/crawler"
-	"github.com/planetlabs/go-stac/pkg/validator"
+	"github.com/planetlabs/go-stac/crawler"
+	"github.com/planetlabs/go-stac/validator"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
