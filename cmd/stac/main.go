@@ -11,14 +11,16 @@ import (
 )
 
 const (
-	// validate flags
+	// make-links-absolute flags
+	flagUrl    = "url"
+	flagOutput = "output"
+
+	// common flags
 	flagEntry       = "entry"
 	flagConcurrency = "concurrency"
 	flagRecursion   = "recursion"
-
-	// common flags
-	flagLogLevel  = "log-level"
-	flagLogFormat = "log-format"
+	flagLogLevel    = "log-level"
+	flagLogFormat   = "log-format"
 )
 
 type Enum struct {
@@ -99,6 +101,7 @@ func main() {
 		Commands: []*cli.Command{
 			validateCommand,
 			statsCommand,
+			absoluteLinksCommand,
 		},
 	}
 

@@ -5,30 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
-type Stats struct {
-	Catalogs    uint64            `json:"catalogs"`
-	Collections uint64            `json:"collections"`
-	Items       uint64            `json:"items"`
-	Extensions  map[string]uint64 `json:"extensions"`
-}
-
-var statsCommand = &cli.Command{
-	Name:        "stats",
-	Usage:       "Generate STAC statistics",
-	Description: "Crawls STAC resources and reports on statistics.",
+var absoluteLinksCommand = &cli.Command{
+	Name:        "make-links-absolute",
+	Usage:       "Rewrite links in STAC metadata",
+	Description: "Crawls STAC resources and makes all links absolute.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    flagEntry,
 			Usage:   "Path to STAC resource (catalog, collection, or item) to crawl",
 			EnvVars: []string{toEnvVar(flagEntry)},
+		},
+		&cli.StringFlag{
+			Name:    flagUrl,
+			Usage:   "URL for the STAC entry resource",
+			EnvVars: []string{toEnvVar(flagUrl)},
+		},
+		&cli.StringFlag{
+			Name:    flagOutput,
+			Usage:   "Path to a directory for writing updated STAC metadata",
+			EnvVars: []string{toEnvVar(flagOutput)},
 		},
 		&cli.IntFlag{
 			Name:    flagConcurrency,
@@ -73,26 +77,45 @@ var statsCommand = &cli.Command{
 		if entryPath == "" {
 			return fmt.Errorf("missing --%s", flagEntry)
 		}
+		baseDir := path.Dir(entryPath)
 
-		mutext := &sync.Mutex{}
-		stats := &Stats{Extensions: map[string]uint64{}}
+		entryUrl := ctx.String(flagUrl)
+		if entryUrl == "" {
+			return fmt.Errorf("missing --%s", flagUrl)
+		}
+
+		baseUrl := path.Dir(entryUrl)
+
+		outputPath := ctx.String(flagOutput)
+		if outputPath == "" {
+			return fmt.Errorf("missing --%s", flagOutput)
+		}
 
 		visitor := func(location string, resource crawler.Resource) error {
-			mutext.Lock()
-			defer mutext.Unlock()
-
-			switch resource.Type() {
-			case crawler.Catalog:
-				stats.Catalogs += 1
-			case crawler.Collection:
-				stats.Collections += 1
-			case crawler.Item:
-				stats.Items += 1
+			relDir, err := filepath.Rel(baseDir, path.Dir(location))
+			if err != nil {
+				return fmt.Errorf("failed to make relative path: %w", err)
 			}
 
-			for _, extension := range resource.Extensions() {
-				count := stats.Extensions[extension]
-				stats.Extensions[extension] = count + 1
+			links := resource.Links()
+			for _, link := range links {
+				link["href"] = makeAbsolute(link["href"], filepath.ToSlash(relDir), baseUrl)
+			}
+			resource["links"] = links
+
+			outDir := filepath.Join(outputPath, relDir)
+			mkdirErr := os.MkdirAll(outDir, 0755)
+			if mkdirErr != nil {
+				return fmt.Errorf("failed to create output directory: %w", mkdirErr)
+			}
+
+			data, err := json.MarshalIndent(resource, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to encode %s: %w", location, err)
+			}
+			outFile := filepath.Join(outDir, path.Base(location))
+			if err := os.WriteFile(outFile, data, 0644); err != nil {
+				return fmt.Errorf("failed to write %s: %w", outFile, err)
 			}
 			return nil
 		}
@@ -107,6 +130,14 @@ var statsCommand = &cli.Command{
 			return err
 		}
 
-		return json.NewEncoder(os.Stdout).Encode(stats)
+		return nil
 	},
+}
+
+func makeAbsolute(linkUrl string, resourceDir string, baseUrl string) string {
+	if strings.HasPrefix(linkUrl, baseUrl+"/") {
+		return linkUrl
+	}
+
+	return path.Join(baseUrl, path.Join(resourceDir, linkUrl))
 }
