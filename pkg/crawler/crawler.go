@@ -200,31 +200,26 @@ func (c *Crawler) crawl(worker *workgroup.Worker[string], resourceUrl string) er
 		return loadErr
 	}
 
-	if visitErr := c.visitor(resourceUrl, resource); visitErr != nil {
-		return visitErr
-	}
-
-	if c.recursion == None {
+	if c.recursion != None {
+		for _, link := range resource.Links() {
+			linkURL, err := resolveURL(resourceUrl, link["href"])
+			if err != nil {
+				return err
+			}
+			switch link["rel"] {
+			case "root", "parent":
+				if c.recursion != All {
+					continue
+				}
+			case "item", "child":
+				break
+			default:
+				continue
+			}
+			worker.Add(linkURL)
+		}
 		return nil
 	}
 
-	for _, link := range resource.Links() {
-		linkURL, err := resolveURL(resourceUrl, link["href"])
-		if err != nil {
-			return err
-		}
-		switch link["rel"] {
-		case "root", "parent":
-			if c.recursion != All {
-				continue
-			}
-		case "item", "child":
-			break
-		default:
-			continue
-		}
-		worker.Add(linkURL)
-	}
-
-	return nil
+	return c.visitor(resourceUrl, resource)
 }
