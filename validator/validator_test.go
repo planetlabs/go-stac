@@ -9,8 +9,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/planetlabs/go-stac/pkg/crawler"
-	"github.com/planetlabs/go-stac/pkg/validator"
+	"github.com/planetlabs/go-stac/crawler"
+	"github.com/planetlabs/go-stac/validator"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/stretchr/testify/suite"
 )

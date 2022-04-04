@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dlclark/regexp2"
-	"github.com/planetlabs/go-stac/pkg/crawler"
+	"github.com/planetlabs/go-stac/crawler"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"github.com/sirupsen/logrus"

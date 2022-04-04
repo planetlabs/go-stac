@@ -218,7 +218,6 @@ func (c *Crawler) crawl(worker *workgroup.Worker[string], resourceUrl string) er
 			}
 			worker.Add(linkURL)
 		}
-		return nil
 	}
 
 	return c.visitor(resourceUrl, resource)
