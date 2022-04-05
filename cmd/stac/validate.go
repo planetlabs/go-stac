@@ -23,6 +23,11 @@ var validateCommand = &cli.Command{
 			Usage:   "Path to STAC resource (catalog, collection, or item) to validate",
 			EnvVars: []string{toEnvVar(flagEntry)},
 		},
+		&cli.StringSliceFlag{
+			Name:    flagSchema,
+			Usage:   "Substitute schema as <original>=<substitute> pairs",
+			EnvVars: []string{toEnvVar(flagSchema)},
+		},
 		&cli.IntFlag{
 			Name:    flagConcurrency,
 			Usage:   "Concurrency limit",
@@ -67,16 +72,26 @@ var validateCommand = &cli.Command{
 			return fmt.Errorf("missing --%s", flagEntry)
 		}
 
+		schemaMap := map[string]string{}
+		for _, pair := range ctx.StringSlice(flagSchema) {
+			items := strings.Split(pair, "=")
+			if len(items) != 2 {
+				return fmt.Errorf("invalid --%s value %q", flagSchema, pair)
+			}
+			schemaMap[items[0]] = items[1]
+		}
+
 		v := validator.New(&validator.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
+			SchemaMap:   schemaMap,
 		})
 		err := v.Validate(context.Background(), entryPath)
 		if err != nil {
 			if validationErr, ok := err.(*validator.ValidationError); ok {
 				return fmt.Errorf("%#v\n", validationErr)
 			}
-			return fmt.Errorf("validation failed:\n%#v\n", err)
+			return fmt.Errorf("validation failed: %s\n", err)
 		}
 		return nil
 	},

@@ -70,6 +70,20 @@ func (s *Suite) TestValidCases() {
 	}
 }
 
+func (s *Suite) TestSchemaMap() {
+	v := validator.New(&validator.Options{
+		Concurrency: crawler.DefaultOptions.Concurrency,
+		Recursion:   crawler.DefaultOptions.Recursion,
+		SchemaMap: map[string]string{
+			"https://stac-extensions.github.io/custom/v1.0.0/schema.json": "https://example.com//extensions/custom.json",
+		},
+	})
+	ctx := context.Background()
+	resourcePath := path.Join("testdata", "cases", "v1.0.0", "item-custom.json")
+	err := v.Validate(ctx, resourcePath)
+	s.Assert().NoError(err)
+}
+
 func TestSuite(t *testing.T) {
 	suite.Run(t, &Suite{})
 }

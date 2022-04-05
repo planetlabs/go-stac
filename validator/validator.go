@@ -60,6 +60,7 @@ type Validator struct {
 	cache       *sync.Map
 	group       *singleflight.Group
 	compiler    *jsonschema.Compiler
+	schemaMap   map[string]string
 }
 
 // Options for the Validator.
@@ -71,6 +72,10 @@ type Options struct {
 	// a single resource.  Use crawler.Children to only visit linked item/child resources.
 	// Use crawler.All to visit parent and child resources.
 	Recursion crawler.RecursionType
+
+	// A lookup of substitute schema locations.  The key is the original schema location
+	// and the value is the substitute location.
+	SchemaMap map[string]string
 }
 
 // New creates a new Validator.
@@ -81,6 +86,7 @@ func New(options *Options) *Validator {
 		group:       &singleflight.Group{},
 		cache:       &sync.Map{},
 		compiler:    jsonschema.NewCompiler(),
+		schemaMap:   options.SchemaMap,
 	}
 	if v.concurrency == 0 {
 		v.concurrency = crawler.DefaultOptions.Concurrency
@@ -93,6 +99,10 @@ func New(options *Options) *Validator {
 
 func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
 	log := logrus.WithField("schema", schemaUrl)
+	if substituteUrl, ok := v.schemaMap[schemaUrl]; ok {
+		log = log.WithField("substitute", substituteUrl)
+		schemaUrl = substituteUrl
+	}
 	if schema, ok := v.cache.Load(schemaUrl); ok {
 		log.Debug("schema cache hit")
 		return schema.(*jsonschema.Schema), nil
