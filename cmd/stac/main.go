@@ -15,6 +15,9 @@ const (
 	flagUrl    = "url"
 	flagOutput = "output"
 
+	// version flags
+	flagVerbose = "verbose"
+
 	// common flags
 	flagEntry       = "entry"
 	flagConcurrency = "concurrency"
@@ -102,6 +105,7 @@ func main() {
 			validateCommand,
 			statsCommand,
 			absoluteLinksCommand,
+			versionCommand,
 		},
 	}
 
