@@ -15,14 +15,14 @@ const (
 	flagSchema = "schema"
 
 	// make-links-absolute flags
-	flagUrl    = "url"
-	flagOutput = "output"
+	flagUrl = "url"
 
 	// version flags
 	flagVerbose = "verbose"
 
 	// common flags
 	flagEntry       = "entry"
+	flagOutput      = "output"
 	flagConcurrency = "concurrency"
 	flagRecursion   = "recursion"
 	flagLogLevel    = "log-level"
@@ -108,6 +108,7 @@ func main() {
 			validateCommand,
 			statsCommand,
 			absoluteLinksCommand,
+			formatCommand,
 			versionCommand,
 		},
 	}

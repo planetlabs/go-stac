@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/planetlabs/go-stac/crawler"
@@ -14,10 +16,111 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var absoluteLinksCommand = &cli.Command{
-	Name:        "make-links-absolute",
-	Usage:       "Rewrite links in STAC metadata",
-	Description: "Crawls STAC resources and makes all links absolute.",
+var keyOrder = []string{
+	"stac_version",
+	"stac_extensions",
+	"type",
+	"id",
+	"collection",
+	"title",
+	"description",
+	"keywords",
+	"summaries",
+	"properties",
+	"bbox",
+	"extent",
+	"geometry",
+	"datetime",
+	"gsd",
+	"platform",
+	"instruments",
+	"assets",
+	"links",
+	"href",
+	"license",
+}
+
+func indexOf(list []string, item string) int {
+	for i, candidate := range list {
+		if candidate == item {
+			return i
+		}
+	}
+	return -1
+}
+
+type member struct {
+	key   string
+	value interface{}
+}
+
+type orderedMap map[string]interface{}
+
+func (r orderedMap) members() []*member {
+	members := []*member{}
+
+	for key, value := range r {
+		members = append(members, &member{key, value})
+	}
+
+	sort.Slice(members, func(i int, j int) bool {
+		iKey := members[i].key
+		jKey := members[j].key
+		iIndex := indexOf(keyOrder, iKey)
+		jIndex := indexOf(keyOrder, jKey)
+		if iIndex > -1 {
+			if jIndex > -1 {
+				return iIndex < jIndex
+			}
+			return true
+		}
+		if jIndex > -1 {
+			return false
+		}
+		return iKey < jKey
+	})
+
+	return members
+}
+
+func (r orderedMap) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString("{")
+
+	for i, m := range r.members() {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+
+		key, keyErr := json.Marshal(m.key)
+		if keyErr != nil {
+			return nil, keyErr
+		}
+		buf.Write(key)
+
+		buf.WriteString(":")
+
+		var value []byte
+		var valueErr error
+		if obj, ok := m.value.(map[string]interface{}); ok {
+			value, valueErr = json.Marshal(orderedMap(obj))
+		} else {
+			value, valueErr = json.Marshal(m.value)
+		}
+		if valueErr != nil {
+			return nil, valueErr
+		}
+		buf.Write(value)
+	}
+
+	buf.WriteString("}")
+	return buf.Bytes(), nil
+}
+
+var formatCommand = &cli.Command{
+	Name:        "format",
+	Usage:       "Format STAC metadata",
+	Description: "Crawls STAC resources and write formatted output.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    flagEntry,
@@ -25,13 +128,8 @@ var absoluteLinksCommand = &cli.Command{
 			EnvVars: []string{toEnvVar(flagEntry)},
 		},
 		&cli.StringFlag{
-			Name:    flagUrl,
-			Usage:   "URL for the STAC entry resource",
-			EnvVars: []string{toEnvVar(flagUrl)},
-		},
-		&cli.StringFlag{
 			Name:    flagOutput,
-			Usage:   "Path to a directory for writing updated STAC metadata",
+			Usage:   "Path to a directory for writing formatted STAC metadata",
 			EnvVars: []string{toEnvVar(flagOutput)},
 		},
 		&cli.IntFlag{
@@ -77,14 +175,7 @@ var absoluteLinksCommand = &cli.Command{
 		if entryPath == "" {
 			return fmt.Errorf("missing --%s", flagEntry)
 		}
-		baseDir := path.Dir(entryPath)
-
-		entryUrl := ctx.String(flagUrl)
-		if entryUrl == "" {
-			return fmt.Errorf("missing --%s", flagUrl)
-		}
-
-		baseUrl := path.Dir(entryUrl)
+		baseDir := filepath.Dir(entryPath)
 
 		outputPath := ctx.String(flagOutput)
 		if outputPath == "" {
@@ -97,19 +188,13 @@ var absoluteLinksCommand = &cli.Command{
 				return fmt.Errorf("failed to make relative path: %w", err)
 			}
 
-			links := resource.Links()
-			for _, link := range links {
-				link["href"] = makeAbsolute(link["href"], filepath.ToSlash(relDir), baseUrl)
-			}
-			resource["links"] = links
-
 			outDir := filepath.Join(outputPath, relDir)
 			mkdirErr := os.MkdirAll(outDir, 0755)
 			if mkdirErr != nil {
 				return fmt.Errorf("failed to create output directory: %w", mkdirErr)
 			}
 
-			data, err := json.MarshalIndent(resource, "", "  ")
+			data, err := json.MarshalIndent(orderedMap(resource), "", "  ")
 			if err != nil {
 				return fmt.Errorf("failed to encode %s: %w", location, err)
 			}
@@ -127,12 +212,4 @@ var absoluteLinksCommand = &cli.Command{
 
 		return c.Crawl(context.Background(), entryPath)
 	},
-}
-
-func makeAbsolute(linkUrl string, resourceDir string, baseUrl string) string {
-	if strings.HasPrefix(linkUrl, baseUrl+"/") {
-		return linkUrl
-	}
-
-	return path.Join(baseUrl, path.Join(resourceDir, linkUrl))
 }
