@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://stac-extensions.github.io/custom/v1.0.0/schema.json#",
+  "title": "Custom Extension",
+  "description": "STAC Custom Extension for STAC Items.",
+  "oneOf": [
+    {
+      "$comment": "This is the schema for STAC Items.",
+      "allOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "properties"
+          ],
+          "properties": {
+            "type": {
+              "const": "Feature"
+            },
+            "properties": {
+              "allOf": [
+                {
+                  "anyOf": [
+                    {"required": ["custom:answer"]},
+                    {"required": ["custom:word"]}
+                  ]
+                },
+                {
+                  "$ref": "#/definitions/fields"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        }
+      ]
+    }
+  ],
+  "definitions": {
+    "stac_extensions": {
+      "type": "object",
+      "required": [
+        "stac_extensions"
+      ],
+      "properties": {
+        "stac_extensions": {
+          "type": "array",
+          "contains": {
+            "contains": {
+              "const": "https://stac-extensions.github.io/custom/v1.0.0/schema.json"
+            }
+          }
+        }
+      }
+    },
+    "fields": {
+      "$comment": "Add your new fields here. Don't require them here, do that above in the item schema.",
+      "type": "object",
+      "properties": {
+        "custom:answer": {
+          "title": "Answer",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 99
+        },
+        "custom:word": {
+          "title": "Word",
+          "type": "string"
+        }
+      },
+      "patternProperties": {
+        "^(?!custom:)": {}
+      },
+      "additionalProperties": false
+    }
+  }
+}

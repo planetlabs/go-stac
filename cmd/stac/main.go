@@ -11,6 +11,9 @@ import (
 )
 
 const (
+	// validate flags
+	flagSchema = "schema"
+
 	// make-links-absolute flags
 	flagUrl    = "url"
 	flagOutput = "output"

@@ -1,0 +1,20 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Feature",
+  "id": "custom-extension-schema-map",
+  "bbox": [0, 0, 0, 0],
+  "geometry": {
+    "type": "Point",
+    "coordinates": [0, 0]
+  },
+  "properties": {
+    "datetime": "2022-03-22T00:00:00Z",
+    "custom:answer": 42,
+    "custom:word": "soup"
+  },
+  "links": [],
+  "assets": {},
+  "stac_extensions": [
+    "https://stac-extensions.github.io/custom/v1.0.0/schema.json"
+  ]
+}
