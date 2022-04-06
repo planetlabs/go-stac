@@ -97,7 +97,7 @@ func ExampleValidator_Validate_children() {
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
 	fmt.Printf("%#v\n", err)
 	// Output:
-	// invalid resource: testdata/cases/v1.0.0/item-missing-id.json
+	// invalid item: testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
@@ -114,7 +114,7 @@ func ExampleValidator_Validate_single() {
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")
 	fmt.Printf("%#v\n", err)
 	// Output:
-	// invalid resource: testdata/cases/v1.0.0/item-missing-id.json
+	// invalid item: testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'

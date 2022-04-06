@@ -48,18 +48,9 @@ var validateCommand = &cli.Command{
 			Usage: fmt.Sprintf("Log level (%s)", strings.Join(logLevelValues, ", ")),
 			Value: &Enum{
 				Values:  logLevelValues,
-				Default: zap.InfoLevel.String(),
+				Default: zap.ErrorLevel.String(),
 			},
 			EnvVars: []string{toEnvVar(flagLogLevel)},
-		},
-		&cli.GenericFlag{
-			Name:  flagLogFormat,
-			Usage: fmt.Sprintf("Log format (%s)", strings.Join(logFormatValues, ", ")),
-			Value: &Enum{
-				Values:  logFormatValues,
-				Default: logFormatConsole,
-			},
-			EnvVars: []string{toEnvVar(flagLogFormat)},
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -71,14 +62,14 @@ var validateCommand = &cli.Command{
 
 		entryPath := ctx.String(flagEntry)
 		if entryPath == "" {
-			return fmt.Errorf("missing --%s", flagEntry)
+			return cli.Exit(fmt.Sprintf("missing --%s", flagEntry), 1)
 		}
 
 		schemaMap := map[string]string{}
 		for _, pair := range ctx.StringSlice(flagSchema) {
 			items := strings.Split(pair, "=")
 			if len(items) != 2 {
-				return fmt.Errorf("invalid --%s value %q", flagSchema, pair)
+				return cli.Exit(fmt.Sprintf("invalid --%s value %q", flagSchema, pair), 1)
 			}
 			schemaMap[items[0]] = items[1]
 		}
@@ -92,9 +83,9 @@ var validateCommand = &cli.Command{
 		err := v.Validate(context.Background(), entryPath)
 		if err != nil {
 			if validationErr, ok := err.(*validator.ValidationError); ok {
-				return fmt.Errorf("%#v\n", validationErr)
+				return cli.Exit(fmt.Sprintf("%#v\n", validationErr), 2)
 			}
-			return fmt.Errorf("validation failed: %s\n", err)
+			return cli.Exit(fmt.Sprintf("validation failed: %s\n", err), 3)
 		}
 		return nil
 	},

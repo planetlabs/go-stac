@@ -161,7 +161,7 @@ func (v *Validator) Validate(ctx context.Context, resource string) error {
 }
 
 func (v *Validator) validate(resourceUrl string, resource crawler.Resource) error {
-	v.logger.V(1).Info("validating resource", "resource", resourceUrl)
+	v.logger.Info("validating resource", "resource", resourceUrl)
 	version := resource.Version()
 	if version == "" {
 		return errors.New("unexpected or missing 'stac_version' member")
@@ -178,7 +178,7 @@ func (v *Validator) validate(resourceUrl string, resource crawler.Resource) erro
 	coreErr := coreSchema.Validate(map[string]interface{}(resource))
 	if coreErr != nil {
 		if err, ok := coreErr.(*jsonschema.ValidationError); ok {
-			return newValidationError(resourceUrl, err)
+			return newValidationError(resourceUrl, resource, err)
 		}
 		return coreErr
 	}
