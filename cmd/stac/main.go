@@ -6,8 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -21,12 +24,12 @@ const (
 	flagVerbose = "verbose"
 
 	// common flags
+	flagLogLevel    = "log-level"
+	flagLogFormat   = "log-format"
 	flagEntry       = "entry"
 	flagOutput      = "output"
 	flagConcurrency = "concurrency"
 	flagRecursion   = "recursion"
-	flagLogLevel    = "log-level"
-	flagLogFormat   = "log-format"
 )
 
 type Enum struct {
@@ -59,44 +62,47 @@ func toEnvVar(flag string) string {
 
 var (
 	logLevelValues = []string{
-		logrus.PanicLevel.String(),
-		logrus.FatalLevel.String(),
-		logrus.ErrorLevel.String(),
-		logrus.WarnLevel.String(),
-		logrus.InfoLevel.String(),
-		logrus.DebugLevel.String(),
-		logrus.TraceLevel.String(),
+		zap.DebugLevel.String(),
+		zap.InfoLevel.String(),
+		zap.WarnLevel.String(),
+		zap.ErrorLevel.String(),
 	}
 
-	logFormatJSON   = "json"
-	logFormatText   = "text"
-	logFormatValues = []string{logFormatJSON, logFormatText}
+	logFormatJSON    = "json"
+	logFormatConsole = "console"
+	logFormatValues  = []string{logFormatJSON, logFormatConsole}
 )
 
-func configureLogger(ctx *cli.Context) error {
-	level, levelErr := logrus.ParseLevel(ctx.String(flagLogLevel))
+func configureLogger(ctx *cli.Context) (*logr.Logger, func(), error) {
+	level, levelErr := zap.ParseAtomicLevel(ctx.String(flagLogLevel))
 	if levelErr != nil {
-		return fmt.Errorf("unsupported %s '%s'", flagLogLevel, ctx.String(flagLogLevel))
-	}
-	logrus.SetLevel(level)
-
-	format := ctx.String(flagLogFormat)
-	switch format {
-	case logFormatJSON:
-		logrus.SetFormatter(&logrus.JSONFormatter{
-			FieldMap: logrus.FieldMap{
-				logrus.FieldKeyMsg:   "message",
-				logrus.FieldKeyLevel: "severity",
-			},
-		})
-		logrus.SetReportCaller(true)
-	case logFormatText:
-		logrus.SetFormatter(&logrus.TextFormatter{})
-	default:
-		return fmt.Errorf("unsupported %s '%s'", flagLogFormat, format)
+		return nil, nil, levelErr
 	}
 
-	return nil
+	config := &zap.Config{
+		Encoding: ctx.String(flagLogFormat),
+		EncoderConfig: zapcore.EncoderConfig{
+			LevelKey:   "level",
+			MessageKey: "message",
+			TimeKey:    "time",
+			EncodeTime: zapcore.ISO8601TimeEncoder,
+		},
+		Level:            level,
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	zapLogger, configErr := config.Build()
+	if configErr != nil {
+		return nil, nil, fmt.Errorf("failed to create logger: %w", configErr)
+	}
+
+	sync := func() {
+		_ = zapLogger.Sync()
+	}
+
+	logger := zapr.NewLogger(zapLogger)
+	return &logger, sync, nil
 }
 
 func main() {

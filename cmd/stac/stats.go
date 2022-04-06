@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/planetlabs/go-stac/crawler"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -45,30 +44,8 @@ var statsCommand = &cli.Command{
 			},
 			EnvVars: []string{toEnvVar(flagRecursion)},
 		},
-		&cli.GenericFlag{
-			Name:  flagLogLevel,
-			Usage: fmt.Sprintf("Log level (%s)", strings.Join(logLevelValues, ", ")),
-			Value: &Enum{
-				Values:  logLevelValues,
-				Default: logrus.InfoLevel.String(),
-			},
-			EnvVars: []string{toEnvVar(flagLogLevel)},
-		},
-		&cli.GenericFlag{
-			Name:  flagLogFormat,
-			Usage: fmt.Sprintf("Log format (%s)", strings.Join(logFormatValues, ", ")),
-			Value: &Enum{
-				Values:  logFormatValues,
-				Default: logFormatText,
-			},
-			EnvVars: []string{toEnvVar(flagLogFormat)},
-		},
 	},
 	Action: func(ctx *cli.Context) error {
-		if err := configureLogger(ctx); err != nil {
-			return err
-		}
-
 		entryPath := ctx.String(flagEntry)
 		if entryPath == "" {
 			return fmt.Errorf("missing --%s", flagEntry)

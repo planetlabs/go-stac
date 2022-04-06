@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/dlclark/regexp2"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -61,6 +62,7 @@ type Validator struct {
 	group       *singleflight.Group
 	compiler    *jsonschema.Compiler
 	schemaMap   map[string]string
+	logger      logr.Logger
 }
 
 // Options for the Validator.
@@ -76,6 +78,9 @@ type Options struct {
 	// A lookup of substitute schema locations.  The key is the original schema location
 	// and the value is the substitute location.
 	SchemaMap map[string]string
+
+	// Logger to use for logging.
+	Logger *logr.Logger
 }
 
 // New creates a new Validator.
@@ -94,30 +99,36 @@ func New(options *Options) *Validator {
 	if v.recursion == "" {
 		v.recursion = crawler.DefaultOptions.Recursion
 	}
+	if options.Logger != nil {
+		v.logger = *options.Logger
+	} else {
+		void := func(prefix string, args string) {}
+		v.logger = funcr.New(void, funcr.Options{})
+	}
 	return v
 }
 
 func (v *Validator) loadSchema(schemaUrl string) (*jsonschema.Schema, error) {
-	log := logrus.WithField("schema", schemaUrl)
+	log := v.logger.WithValues("schema", schemaUrl)
 	if substituteUrl, ok := v.schemaMap[schemaUrl]; ok {
-		log = log.WithField("substitute", substituteUrl)
+		log = log.WithValues("substitute", substituteUrl)
 		schemaUrl = substituteUrl
 	}
 	if schema, ok := v.cache.Load(schemaUrl); ok {
-		log.Debug("schema cache hit")
+		log.V(1).Info("schema cache hit")
 		return schema.(*jsonschema.Schema), nil
 	}
 	schema, err, _ := v.group.Do(schemaUrl, func() (interface{}, error) {
 		value, ok := v.cache.Load(schemaUrl)
 		if ok {
-			log.Debug("schema cache hit")
+			log.V(1).Info("schema cache hit")
 			return value, nil
 		}
 		schema, err := v.compiler.Compile(schemaUrl)
 		if err != nil {
 			return nil, err
 		}
-		log.Debug("schema cache miss")
+		log.V(1).Info("schema cache miss")
 		v.cache.Store(schemaUrl, schema)
 		return schema, nil
 	})
@@ -144,7 +155,7 @@ func (v *Validator) Validate(ctx context.Context, resource string) error {
 }
 
 func (v *Validator) validate(resourceUrl string, resource crawler.Resource) error {
-	logrus.WithField("resource", resourceUrl).Debug("validating resource")
+	v.logger.V(1).Info("validating resource", "resource", resourceUrl)
 	version := resource.Version()
 	if version == "" {
 		return errors.New("unexpected or missing 'stac_version' member")

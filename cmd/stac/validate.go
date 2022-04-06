@@ -7,8 +7,8 @@ import (
 
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/planetlabs/go-stac/validator"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 )
 
 var recursionValues = []string{string(crawler.All), string(crawler.None), string(crawler.Children)}
@@ -48,7 +48,7 @@ var validateCommand = &cli.Command{
 			Usage: fmt.Sprintf("Log level (%s)", strings.Join(logLevelValues, ", ")),
 			Value: &Enum{
 				Values:  logLevelValues,
-				Default: logrus.InfoLevel.String(),
+				Default: zap.InfoLevel.String(),
 			},
 			EnvVars: []string{toEnvVar(flagLogLevel)},
 		},
@@ -57,15 +57,17 @@ var validateCommand = &cli.Command{
 			Usage: fmt.Sprintf("Log format (%s)", strings.Join(logFormatValues, ", ")),
 			Value: &Enum{
 				Values:  logFormatValues,
-				Default: logFormatText,
+				Default: logFormatConsole,
 			},
 			EnvVars: []string{toEnvVar(flagLogFormat)},
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		if err := configureLogger(ctx); err != nil {
-			return err
+		logger, sync, logErr := configureLogger(ctx)
+		if logErr != nil {
+			return logErr
 		}
+		defer sync()
 
 		entryPath := ctx.String(flagEntry)
 		if entryPath == "" {
@@ -85,6 +87,7 @@ var validateCommand = &cli.Command{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 			SchemaMap:   schemaMap,
+			Logger:      logger,
 		})
 		err := v.Validate(context.Background(), entryPath)
 		if err != nil {
