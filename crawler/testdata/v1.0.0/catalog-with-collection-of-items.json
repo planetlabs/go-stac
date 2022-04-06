@@ -1,0 +1,16 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Catalog",
+  "id": "catalog-with-collection-of-items",
+  "description": "A valid catalog",
+  "links": [
+    {
+      "rel": "self",
+      "href": "./catalog-with-collection-of-items.json"
+    },
+    {
+      "rel": "child",
+      "href": "./collection-with-items.json"
+    }
+  ]
+}

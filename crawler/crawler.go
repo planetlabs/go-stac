@@ -135,27 +135,35 @@ type Options struct {
 	Recursion RecursionType
 }
 
+func (c *Crawler) apply(options *Options) {
+	if options.Concurrency > 0 {
+		c.concurrency = options.Concurrency
+	}
+	if options.Recursion != "" {
+		c.recursion = options.Recursion
+	}
+}
+
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
 	Recursion:   Children,
 	Concurrency: runtime.GOMAXPROCS(0),
 }
 
-// New creates a crawler with the default options.
+// New creates a crawler with the provided options (or DefaultOptions
+// if none are provided).
 //
 // The visitor will be called for each resource resolved.
-func New(visitor Visitor) *Crawler {
-	return NewWithOptions(visitor, DefaultOptions)
-}
-
-// NewWithOptions creates a crawler with the given options.
-func NewWithOptions(visitor Visitor, options *Options) *Crawler {
-	return &Crawler{
-		visitor:     visitor,
-		visited:     &sync.Map{},
-		recursion:   options.Recursion,
-		concurrency: options.Concurrency,
+func New(visitor Visitor, options ...*Options) *Crawler {
+	c := &Crawler{
+		visitor: visitor,
+		visited: &sync.Map{},
 	}
+	c.apply(DefaultOptions)
+	for _, opt := range options {
+		c.apply(opt)
+	}
+	return c
 }
 
 // Crawl calls the visitor for each resolved resource.

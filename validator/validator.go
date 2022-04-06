@@ -83,27 +83,33 @@ type Options struct {
 	Logger *logr.Logger
 }
 
-// New creates a new Validator.
-func New(options *Options) *Validator {
-	v := &Validator{
-		concurrency: options.Concurrency,
-		recursion:   options.Recursion,
-		group:       &singleflight.Group{},
-		cache:       &sync.Map{},
-		compiler:    jsonschema.NewCompiler(),
-		schemaMap:   options.SchemaMap,
+func (v *Validator) apply(options *Options) {
+	if options.Concurrency != 0 {
+		v.concurrency = options.Concurrency
 	}
-	if v.concurrency == 0 {
-		v.concurrency = crawler.DefaultOptions.Concurrency
+	if options.Recursion != "" {
+		v.recursion = options.Recursion
 	}
-	if v.recursion == "" {
-		v.recursion = crawler.DefaultOptions.Recursion
+	if options.SchemaMap != nil {
+		v.schemaMap = options.SchemaMap
 	}
 	if options.Logger != nil {
 		v.logger = *options.Logger
-	} else {
-		void := func(prefix string, args string) {}
-		v.logger = funcr.New(void, funcr.Options{})
+	}
+}
+
+// New creates a new Validator.
+func New(options ...*Options) *Validator {
+	v := &Validator{
+		concurrency: crawler.DefaultOptions.Concurrency,
+		recursion:   crawler.DefaultOptions.Recursion,
+		group:       &singleflight.Group{},
+		cache:       &sync.Map{},
+		compiler:    jsonschema.NewCompiler(),
+		logger:      funcr.New(func(prefix string, args string) {}, funcr.Options{}),
+	}
+	for _, opt := range options {
+		v.apply(opt)
 	}
 	return v
 }
@@ -147,7 +153,7 @@ func schemaUrl(version string, resourceType crawler.ResourceType) string {
 //
 // The resource can be a path to a local file or a URL.
 func (v *Validator) Validate(ctx context.Context, resource string) error {
-	c := crawler.NewWithOptions(v.validate, &crawler.Options{
+	c := crawler.New(v.validate, &crawler.Options{
 		Concurrency: v.concurrency,
 		Recursion:   v.recursion,
 	})

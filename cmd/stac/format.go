@@ -182,7 +182,7 @@ var formatCommand = &cli.Command{
 			return nil
 		}
 
-		c := crawler.NewWithOptions(visitor, &crawler.Options{
+		c := crawler.New(visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
