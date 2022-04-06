@@ -1,0 +1,28 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Feature",
+  "id": "item-in-collection",
+  "bbox": [0, 0, 0, 0],
+  "geometry": {
+    "type": "Point",
+    "coordinates": [0, 0]
+  },
+  "properties": {
+    "datetime": "2022-03-22T00:00:00Z"
+  },
+  "links": [
+    {
+      "rel": "self",
+      "href": "./item-in-collection.json"
+    },
+    {
+      "rel": "collection",
+      "href": "./collection-with-items.json"
+    },
+    {
+      "rel": "root",
+      "href": "./catalog-with-collection-of-items.json"
+    }
+  ],
+  "assets": {}
+}
