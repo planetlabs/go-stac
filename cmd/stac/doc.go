@@ -1,5 +1,5 @@
 /*
-The stac program is a command line tool for crawling and validating STAC resources.
+The stac program is a command line tool for working with STAC resources.
 
 	NAME:
 		stac - STAC Utilities
@@ -11,8 +11,12 @@ The stac program is a command line tool for crawling and validating STAC resourc
 		Utilities for working with Spatio-Temporal Asset Catalog (STAC) metadata.
 
 	COMMANDS:
-		validate  Validate STAC metadata
-		help, h   Shows a list of commands or help for one command
+		validate             Validate STAC metadata
+		stats                Generate STAC statistics
+		make-links-absolute  Rewrite links in STAC metadata
+		format               Format STAC metadata
+		version              Print build information
+		help, h              Shows a list of commands or help for one command
 
 	GLOBAL OPTIONS:
 		--help, -h  show help (default: false)
