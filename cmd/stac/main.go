@@ -25,7 +25,6 @@ const (
 
 	// common flags
 	flagLogLevel    = "log-level"
-	flagLogFormat   = "log-format"
 	flagEntry       = "entry"
 	flagOutput      = "output"
 	flagConcurrency = "concurrency"
@@ -64,13 +63,8 @@ var (
 	logLevelValues = []string{
 		zap.DebugLevel.String(),
 		zap.InfoLevel.String(),
-		zap.WarnLevel.String(),
 		zap.ErrorLevel.String(),
 	}
-
-	logFormatJSON    = "json"
-	logFormatConsole = "console"
-	logFormatValues  = []string{logFormatJSON, logFormatConsole}
 )
 
 func configureLogger(ctx *cli.Context) (*logr.Logger, func(), error) {
@@ -80,12 +74,13 @@ func configureLogger(ctx *cli.Context) (*logr.Logger, func(), error) {
 	}
 
 	config := &zap.Config{
-		Encoding: ctx.String(flagLogFormat),
+		Encoding: "console",
 		EncoderConfig: zapcore.EncoderConfig{
-			LevelKey:   "level",
-			MessageKey: "message",
-			TimeKey:    "time",
-			EncodeTime: zapcore.ISO8601TimeEncoder,
+			MessageKey:  "message",
+			LevelKey:    "level",
+			EncodeLevel: zapcore.LowercaseColorLevelEncoder,
+			TimeKey:     "time",
+			EncodeTime:  zapcore.RFC3339TimeEncoder,
 		},
 		Level:            level,
 		OutputPaths:      []string{"stderr"},
