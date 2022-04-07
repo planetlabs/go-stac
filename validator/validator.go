@@ -151,7 +151,10 @@ func schemaUrl(version string, resourceType crawler.ResourceType) string {
 
 // Validate validates a STAC resource.
 //
-// The resource can be a path to a local file or a URL.
+// The resource can be a path to a local file or a URL.  Validation will stop
+// with the first invalid resource and the resulting ValidationError will be
+// returned.  Context cancellation will also stop validation and the context
+// error will be returned.
 func (v *Validator) Validate(ctx context.Context, resource string) error {
 	c := crawler.New(v.validate, &crawler.Options{
 		Concurrency: v.concurrency,

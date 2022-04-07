@@ -16,6 +16,10 @@ import (
 	"github.com/tschaub/workgroup"
 )
 
+// RecursionType informs the crawler how to treat linked resources.
+// None will only call the visitor for the first resource.  Children
+// will call the visitor for all child catalogs, collections, and items.
+// All will call the visitor for parent resources as well as child resources.
 type RecursionType string
 
 const (
@@ -113,6 +117,10 @@ func resolveURL(baseUrl string, resourceUrl string) (string, error) {
 	return resolved.String(), nil
 }
 
+// Visitor is called for each resource during crawling.
+//
+// The resource location (URL or file path) is passed as the first argument.
+// Any returned error will stop crawling and be returned by Crawl.
 type Visitor func(string, Resource) error
 
 // Crawler crawls STAC resources.
@@ -168,7 +176,9 @@ func New(visitor Visitor, options ...*Options) *Crawler {
 
 // Crawl calls the visitor for each resolved resource.
 //
-// The resource can be a file path or a URL.
+// The resource can be a file path or a URL.  Any error returned by visitor
+// will stop crawling and be returned by this function.  Context cancellation
+// will also stop crawling and the context error will be returned.
 func (c *Crawler) Crawl(ctx context.Context, resource string) error {
 	resourceUrl, isFilepath, err := normalizeUrl(resource)
 	if err != nil {
