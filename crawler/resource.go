@@ -5,12 +5,13 @@ const (
 	extensionsKey = "stac_extensions"
 )
 
+// ResourceType indicates the document-level STAC resource type.
 type ResourceType string
 
 const (
-	Item       = ResourceType("item")
-	Catalog    = ResourceType("catalog")
-	Collection = ResourceType("collection")
+	Item       ResourceType = "item"
+	Catalog    ResourceType = "catalog"
+	Collection ResourceType = "collection"
 )
 
 // Resource represents a STAC catalog, collection, or item.
