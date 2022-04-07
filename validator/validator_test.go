@@ -90,8 +90,7 @@ func TestSuite(t *testing.T) {
 
 func ExampleValidator_Validate_children() {
 	v := validator.New(&validator.Options{
-		Concurrency: 1,
-		Recursion:   crawler.Children,
+		Recursion: crawler.Children,
 	})
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
@@ -107,8 +106,7 @@ func ExampleValidator_Validate_children() {
 
 func ExampleValidator_Validate_single() {
 	v := validator.New(&validator.Options{
-		Concurrency: 1,
-		Recursion:   crawler.None,
+		Recursion: crawler.None,
 	})
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")

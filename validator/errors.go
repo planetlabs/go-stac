@@ -18,6 +18,9 @@ type ValidationError struct {
 	Resource crawler.Resource
 }
 
+// GoString provides additional detail about the validation error.
+//
+// Called when the # flag is used with the %v verb as in fmt.Printf("%#v", err).
 func (err *ValidationError) GoString() string {
 	return fmt.Sprintf("invalid %s: %s\n%s", err.Resource.Type(), err.Location, err.ValidationError.GoString())
 }
