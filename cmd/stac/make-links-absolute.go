@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -60,8 +61,11 @@ var absoluteLinksCommand = &cli.Command{
 		if entryUrl == "" {
 			return fmt.Errorf("missing --%s", flagUrl)
 		}
-
-		baseUrl := path.Dir(entryUrl)
+		baseUrl, urlErr := url.Parse(entryUrl)
+		if urlErr != nil {
+			return fmt.Errorf("trouble parsing url %q: %w", entryUrl, urlErr)
+		}
+		baseUrl.Path = path.Dir(baseUrl.Path)
 
 		outputPath := ctx.String(flagOutput)
 		if outputPath == "" {
@@ -76,7 +80,12 @@ var absoluteLinksCommand = &cli.Command{
 
 			links := resource.Links()
 			for _, link := range links {
-				link["href"] = makeAbsolute(link["href"], filepath.ToSlash(relDir), baseUrl)
+				relUrl, err := url.Parse(link["href"])
+				if err != nil {
+					return fmt.Errorf("failed to parse link %q: %w", link["href"], err)
+				}
+				absUrl := makeAbsolute(relUrl, filepath.ToSlash(relDir), baseUrl)
+				link["href"] = absUrl.String()
 			}
 			resource["links"] = links
 
@@ -106,10 +115,18 @@ var absoluteLinksCommand = &cli.Command{
 	},
 }
 
-func makeAbsolute(linkUrl string, resourceDir string, baseUrl string) string {
-	if strings.HasPrefix(linkUrl, baseUrl+"/") {
+func cloneUrl(u *url.URL) *url.URL {
+	newUrl := *u
+	return &newUrl
+}
+
+func makeAbsolute(linkUrl *url.URL, resourceDir string, baseUrl *url.URL) *url.URL {
+	if linkUrl.IsAbs() {
 		return linkUrl
 	}
 
-	return path.Join(baseUrl, path.Join(resourceDir, linkUrl))
+	newUrl := cloneUrl(baseUrl)
+	newUrl.Path = path.Join(baseUrl.Path, path.Join(resourceDir, linkUrl.Path))
+
+	return newUrl
 }
