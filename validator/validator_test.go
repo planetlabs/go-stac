@@ -48,6 +48,7 @@ func (s *Suite) TearDownSuite() {
 
 func (s *Suite) TestValidCases() {
 	cases := []string{
+		"v1.0.0-beta.2/LC08_L1TP_097073_20130319_20200913_02_T1.json",
 		"v1.0.0/catalog.json",
 		"v1.0.0/collection.json",
 		"v1.0.0/item.json",
@@ -56,10 +57,7 @@ func (s *Suite) TestValidCases() {
 		"v1.0.0/item-eo.json",
 	}
 
-	v := validator.New(&validator.Options{
-		Concurrency: crawler.DefaultOptions.Concurrency,
-		Recursion:   crawler.DefaultOptions.Recursion,
-	})
+	v := validator.New()
 	ctx := context.Background()
 	for _, c := range cases {
 		s.Run(c, func() {
