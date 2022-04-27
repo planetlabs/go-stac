@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -186,8 +187,15 @@ func (v *Validator) validate(resourceUrl string, resource crawler.Resource) erro
 		return coreErr
 	}
 
-	for _, extensionUrl := range resource.Extensions() {
-		extensionSchema, loadErr := v.loadSchema(extensionUrl)
+	for _, extension := range resource.Extensions() {
+		extensionUrl, urlErr := url.Parse(extension)
+		if urlErr != nil || !extensionUrl.IsAbs() {
+			// this is expected for stac < 1.0.0
+			v.logger.V(1).Info("invalid extension URL", "extension", extension)
+			continue
+		}
+
+		extensionSchema, loadErr := v.loadSchema(extensionUrl.String())
 		if loadErr != nil {
 			return loadErr
 		}

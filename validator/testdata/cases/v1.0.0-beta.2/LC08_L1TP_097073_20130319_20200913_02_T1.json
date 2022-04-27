@@ -1,0 +1,767 @@
+{
+  "assets": {
+    "ANG.txt": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_ANG.txt",
+      "roles": [
+        "metadata"
+      ],
+      "title": "Angle Coefficients File",
+      "type": "text/plain"
+    },
+    "B1": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "coastal",
+          "name": "B1"
+        }
+      ],
+      "eo:common_name": "coastal",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B1.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Coastal/Aerosol Band (B1)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B10": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "lwir11",
+          "name": "B10"
+        }
+      ],
+      "eo:common_name": "lwir11",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B10.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Thermal Infrared Band 10.9 (B10)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B11": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "lwir12",
+          "name": "B11"
+        }
+      ],
+      "eo:common_name": "lwir12",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B11.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Thermal Infrared Band Band 12.0 (B11)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B2": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "blue",
+          "name": "B2"
+        }
+      ],
+      "eo:common_name": "blue",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B2.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Blue Band (B2)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B3": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "green",
+          "name": "B3"
+        }
+      ],
+      "eo:common_name": "green",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B3.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Green Band (B3)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B4": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "red",
+          "name": "B4"
+        }
+      ],
+      "eo:common_name": "red",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B4.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Red Band (B4)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B5": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "nir",
+          "name": "B5"
+        }
+      ],
+      "eo:common_name": "nir",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B5.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Near Infrared Band 0.8 (B5)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B6": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "swir16",
+          "name": "B6"
+        }
+      ],
+      "eo:common_name": "swir16",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B6.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Short-wave Infrared Band 1.6 (B6)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B7": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "swir22",
+          "name": "B7"
+        }
+      ],
+      "eo:common_name": "swir22",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B7.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Short-wave Infrared Band 2.2 (B7)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B8": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "pan",
+          "name": "B8"
+        }
+      ],
+      "eo:common_name": "pan",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B8.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Panchromatic Band (B8)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "B9": {
+      "bundleable": true,
+      "eo:bands": [
+        {
+          "common_name": "cirrus",
+          "name": "B9"
+        }
+      ],
+      "eo:common_name": "cirrus",
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_B9.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Cirrus Band (B9)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "MTL.json": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_MTL.json",
+      "roles": [
+        "metadata"
+      ],
+      "title": "Product Metadata File (json)",
+      "type": "text/plain"
+    },
+    "MTL.txt": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_MTL.txt",
+      "roles": [
+        "metadata"
+      ],
+      "title": "Product Metadata File",
+      "type": "text/plain"
+    },
+    "MTL.xml": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_MTL.xml",
+      "roles": [
+        "metadata"
+      ],
+      "title": "Product Metadata File (xml)",
+      "type": "text/plain"
+    },
+    "QA_PIXEL": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_QA_PIXEL.TIF",
+      "roles": [
+        "qa"
+      ],
+      "title": "Quality Assessment Band",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "QA_RADSAT": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_QA_RADSAT.TIF",
+      "roles": [
+        "qa"
+      ],
+      "title": "Radiometric Saturation Quality Assessment Band",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "SAA": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_SAA.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Solar Azimuth Angle Band (B4)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "SZA": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_SZA.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Solar Zenith Angle Band (B4)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "VAA": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_VAA.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Sensor Azimuth Angle Band (B4)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "VZA": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_VZA.TIF",
+      "roles": [
+        "data"
+      ],
+      "title": "Sensor Zenith Angle Band (B4)",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "index": {
+      "bundleable": true,
+      "href": "https://landsatlook.usgs.gov/stac-browser/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1",
+      "roles": [
+        "metadata"
+      ],
+      "title": "HTML index page",
+      "type": "text/html"
+    },
+    "reduced_resolution_browse": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_thumb_large.jpeg",
+      "roles": [
+        "overview"
+      ],
+      "title": "Reduced resolution browse image",
+      "type": "image/jpeg"
+    },
+    "thumbnail": {
+      "bundleable": true,
+      "href": "s3://usgs-landsat/collection02/level-1/standard/oli-tirs/2013/097/073/LC08_L1TP_097073_20130319_20200913_02_T1/LC08_L1TP_097073_20130319_20200913_02_T1_thumb_small.jpeg",
+      "roles": [
+        "overview",
+        "preview"
+      ],
+      "title": "Thumbnail image",
+      "type": "image/jpeg"
+    }
+  },
+  "bbox": [
+    141.60861638227692,
+    -19.774381758596817,
+    143.66666013458246,
+    -17.799544434580856
+  ],
+  "collection": "landsat8_c2l1t1",
+  "geometry": {
+    "coordinates": [
+      [
+        [
+          [
+            141.98951841217882,
+            -17.799544434580856
+          ],
+          [
+            143.66666013458246,
+            -18.14853338705915
+          ],
+          [
+            143.30230686298478,
+            -19.774381758596817
+          ],
+          [
+            141.60861638227692,
+            -19.42082757701923
+          ],
+          [
+            141.98951841217882,
+            -17.799544434580856
+          ]
+        ]
+      ]
+    ],
+    "type": "MultiPolygon"
+  },
+  "id": "LC08_L1TP_097073_20130319_20200913_02_T1",
+  "links": [
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1",
+      "operations": [
+        "get"
+      ],
+      "rel": "self",
+      "title": "Self",
+      "type": "application/geo+json"
+    },
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1",
+      "rel": "parent",
+      "title": "Parent",
+      "type": "application/json"
+    },
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1",
+      "rel": "collection",
+      "title": "Collection",
+      "type": "application/json"
+    },
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth",
+      "rel": "root",
+      "title": "Root",
+      "type": "application/json"
+    },
+    {
+      "capabilities": {
+        "parameters": [
+          {
+            "name": "composite",
+            "values": [
+              {
+                "description": "Default View.",
+                "name": "default",
+                "title": "Default View"
+              },
+              {
+                "description": "True Color Composite.",
+                "name": "true_color",
+                "title": "True Color Composite"
+              },
+              {
+                "description": "Normalized Difference Vegetation Index.",
+                "name": "ndvi",
+                "title": "NDVI"
+              },
+              {
+                "description": "Normalized Difference Water Index using Green and NIR per McFeeters(1997).",
+                "name": "ndwi",
+                "title": "NDWI (Green & NIR)"
+              },
+              {
+                "description": "Normalized Difference Water Index using NIR and SWIR per Gao(1997).",
+                "name": "ndwi2",
+                "title": "NDWI (NIR & SWIR)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Red, and Green bands.",
+                "name": "color_infrared_veg1",
+                "title": "Color Infrared Vegetation (NRG)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Green, and Blue bands.",
+                "name": "color_infrared_veg2",
+                "title": "Color Infrared Vegetation 2 (NGB)"
+              },
+              {
+                "description": "False Color Infrared (Urban).",
+                "name": "false_color_urban",
+                "title": "False Color (Urban)"
+              },
+              {
+                "description": "Agriculture.",
+                "name": "agriculture",
+                "title": "Agriculture"
+              },
+              {
+                "description": "Geology.",
+                "name": "geology",
+                "title": "Geology"
+              },
+              {
+                "description": "Bathymetric.",
+                "name": "bathymetric",
+                "title": "Bathymetric"
+              },
+              {
+                "description": "SWIR 2.",
+                "name": "swir2",
+                "title": "SWIR 2"
+              }
+            ]
+          }
+        ]
+      },
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/preview",
+      "rel": "preview",
+      "title": "Preview Image",
+      "type": "image/jpeg"
+    },
+    {
+      "capabilities": {
+        "parameters": [
+          {
+            "name": "composite",
+            "values": [
+              {
+                "description": "Default View.",
+                "name": "default",
+                "title": "Default View"
+              },
+              {
+                "description": "True Color Composite.",
+                "name": "true_color",
+                "title": "True Color Composite"
+              },
+              {
+                "description": "Normalized Difference Vegetation Index.",
+                "name": "ndvi",
+                "title": "NDVI"
+              },
+              {
+                "description": "Normalized Difference Water Index using Green and NIR per McFeeters(1997).",
+                "name": "ndwi",
+                "title": "NDWI (Green & NIR)"
+              },
+              {
+                "description": "Normalized Difference Water Index using NIR and SWIR per Gao(1997).",
+                "name": "ndwi2",
+                "title": "NDWI (NIR & SWIR)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Red, and Green bands.",
+                "name": "color_infrared_veg1",
+                "title": "Color Infrared Vegetation (NRG)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Green, and Blue bands.",
+                "name": "color_infrared_veg2",
+                "title": "Color Infrared Vegetation 2 (NGB)"
+              },
+              {
+                "description": "False Color Infrared (Urban).",
+                "name": "false_color_urban",
+                "title": "False Color (Urban)"
+              },
+              {
+                "description": "Agriculture.",
+                "name": "agriculture",
+                "title": "Agriculture"
+              },
+              {
+                "description": "Geology.",
+                "name": "geology",
+                "title": "Geology"
+              },
+              {
+                "description": "Bathymetric.",
+                "name": "bathymetric",
+                "title": "Bathymetric"
+              },
+              {
+                "description": "SWIR 2.",
+                "name": "swir2",
+                "title": "SWIR 2"
+              }
+            ]
+          }
+        ]
+      },
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/maplayer?format=zxyratio",
+      "rel": "maplayer",
+      "title": "TMS Map Layer with Ratio",
+      "type": "application/json"
+    },
+    {
+      "capabilities": {
+        "parameters": [
+          {
+            "name": "composite",
+            "values": [
+              {
+                "description": "Default View.",
+                "name": "default",
+                "title": "Default View"
+              },
+              {
+                "description": "True Color Composite.",
+                "name": "true_color",
+                "title": "True Color Composite"
+              },
+              {
+                "description": "Normalized Difference Vegetation Index.",
+                "name": "ndvi",
+                "title": "NDVI"
+              },
+              {
+                "description": "Normalized Difference Water Index using Green and NIR per McFeeters(1997).",
+                "name": "ndwi",
+                "title": "NDWI (Green & NIR)"
+              },
+              {
+                "description": "Normalized Difference Water Index using NIR and SWIR per Gao(1997).",
+                "name": "ndwi2",
+                "title": "NDWI (NIR & SWIR)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Red, and Green bands.",
+                "name": "color_infrared_veg1",
+                "title": "Color Infrared Vegetation (NRG)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Green, and Blue bands.",
+                "name": "color_infrared_veg2",
+                "title": "Color Infrared Vegetation 2 (NGB)"
+              },
+              {
+                "description": "False Color Infrared (Urban).",
+                "name": "false_color_urban",
+                "title": "False Color (Urban)"
+              },
+              {
+                "description": "Agriculture.",
+                "name": "agriculture",
+                "title": "Agriculture"
+              },
+              {
+                "description": "Geology.",
+                "name": "geology",
+                "title": "Geology"
+              },
+              {
+                "description": "Bathymetric.",
+                "name": "bathymetric",
+                "title": "Bathymetric"
+              },
+              {
+                "description": "SWIR 2.",
+                "name": "swir2",
+                "title": "SWIR 2"
+              }
+            ]
+          }
+        ]
+      },
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/maplayer?format=zxy",
+      "rel": "maplayer-zxy",
+      "title": "TMS Map Layer without Ratio",
+      "type": "application/json"
+    },
+    {
+      "capabilities": {
+        "parameters": [
+          {
+            "name": "composite",
+            "values": [
+              {
+                "description": "Default View.",
+                "name": "default",
+                "title": "Default View"
+              },
+              {
+                "description": "True Color Composite.",
+                "name": "true_color",
+                "title": "True Color Composite"
+              },
+              {
+                "description": "Normalized Difference Vegetation Index.",
+                "name": "ndvi",
+                "title": "NDVI"
+              },
+              {
+                "description": "Normalized Difference Water Index using Green and NIR per McFeeters(1997).",
+                "name": "ndwi",
+                "title": "NDWI (Green & NIR)"
+              },
+              {
+                "description": "Normalized Difference Water Index using NIR and SWIR per Gao(1997).",
+                "name": "ndwi2",
+                "title": "NDWI (NIR & SWIR)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Red, and Green bands.",
+                "name": "color_infrared_veg1",
+                "title": "Color Infrared Vegetation (NRG)"
+              },
+              {
+                "description": "Color Infrared (Vegetation) consisting of Near-infrared, Green, and Blue bands.",
+                "name": "color_infrared_veg2",
+                "title": "Color Infrared Vegetation 2 (NGB)"
+              },
+              {
+                "description": "False Color Infrared (Urban).",
+                "name": "false_color_urban",
+                "title": "False Color (Urban)"
+              },
+              {
+                "description": "Agriculture.",
+                "name": "agriculture",
+                "title": "Agriculture"
+              },
+              {
+                "description": "Geology.",
+                "name": "geology",
+                "title": "Geology"
+              },
+              {
+                "description": "Bathymetric.",
+                "name": "bathymetric",
+                "title": "Bathymetric"
+              },
+              {
+                "description": "SWIR 2.",
+                "name": "swir2",
+                "title": "SWIR 2"
+              }
+            ]
+          }
+        ]
+      },
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/maplayer/leaflet",
+      "rel": "leaflet",
+      "title": "Minimal Leaflet Viewer",
+      "type": "text/html"
+    },
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/maplayer/statistics",
+      "rel": "statistics",
+      "title": "Scene-level Statistics",
+      "type": "application/json"
+    },
+    {
+      "href": "https://eod-catalog-svc-prod.astraea.earth/collections/landsat8_c2l1t1/items/LC08_L1TP_097073_20130319_20200913_02_T1/maplayer/tileinfo",
+      "rel": "tileinfo",
+      "title": "Map Layer Metadata",
+      "type": "application/json"
+    },
+    {
+      "href": "https://spdx.org/licenses/PDDL-1.0.html",
+      "rel": "license",
+      "title": "License",
+      "type": "text/html"
+    }
+  ],
+  "properties": {
+    "aac:collection_attribution": "USGS/NASA Landsat",
+    "aac:collection_display_name": "Landsat 8 Level 1",
+    "aac:collection_family_display_name": "Landsat 8",
+    "aac:grid_id": "WRS2-097073",
+    "aac:item_attribution": "USGS/NASA Landsat",
+    "aac:item_family": "landsat8_c2l1t1",
+    "constellation": "landsat-8",
+    "created": "2021-06-10T20:42:30.516953Z",
+    "datetime": "2013-03-19T00:31:20.373071Z",
+    "eo:cloud_cover": 4.61,
+    "eo:constellation": "landsat-8",
+    "eo:epsg": 32654,
+    "eo:gsd": 30.0,
+    "eo:instruments": [
+      "OLI",
+      "TIRS"
+    ],
+    "eo:platform": "landsat-8",
+    "gsd": 30.0,
+    "instruments": [
+      "OLI",
+      "TIRS"
+    ],
+    "license": "PDDL-1.0",
+    "platform": "landsat-8",
+    "proj:centroid": {
+      "lat": -18.590303965400754,
+      "lon": 142.51072277711097
+    },
+    "proj:crs": "+proj=utm +zone=54 +datum=WGS84 +units=m +no_defs ",
+    "proj:epsg": 32654,
+    "proj:geometry": {
+      "coordinates": [
+        [
+          [
+            [
+              141.98951841217882,
+              -17.799544434580856
+            ],
+            [
+              143.66666013458246,
+              -18.14853338705915
+            ],
+            [
+              143.30230686298478,
+              -19.774381758596817
+            ],
+            [
+              141.60861638227692,
+              -19.42082757701923
+            ],
+            [
+              141.98951841217882,
+              -17.799544434580856
+            ]
+          ]
+        ]
+      ],
+      "type": "MultiPolygon"
+    },
+    "providers": [
+      {
+        "attribution": "USGS/NASA Landsat",
+        "name": "USGS",
+        "roles": [
+          "producer",
+          "licensor"
+        ],
+        "url": "https://landsat.usgs.gov/"
+      }
+    ],
+    "updated": "2021-06-10T20:42:30.516953Z",
+    "view:off_nadir": 0,
+    "view:sun_azimuth": 63.06271474,
+    "view:sun_elevation": 54.15469635
+  },
+  "stac_extensions": [
+    "aac",
+    "eo",
+    "projection",
+    "view"
+  ],
+  "stac_version": "1.0.0-beta.2",
+  "type": "Feature"
+}
