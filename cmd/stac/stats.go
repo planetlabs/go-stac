@@ -7,8 +7,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/planetlabs/go-stac/crawler"
+	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v2"
 )
 
@@ -54,6 +56,19 @@ var statsCommand = &cli.Command{
 		mutext := &sync.Mutex{}
 		stats := &Stats{Extensions: map[string]uint64{}}
 
+		bar := progressbar.NewOptions64(
+			-1,
+			progressbar.OptionSetDescription("catalogs: 0; collections: 0; items: 0"),
+			progressbar.OptionSetItsString("r"),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionSetWidth(10),
+			progressbar.OptionThrottle(65*time.Millisecond),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSpinnerType(14),
+			progressbar.OptionFullWidth(),
+			progressbar.OptionClearOnFinish(),
+		)
+
 		visitor := func(location string, resource crawler.Resource) error {
 			mutext.Lock()
 			defer mutext.Unlock()
@@ -66,6 +81,9 @@ var statsCommand = &cli.Command{
 			case crawler.Item:
 				stats.Items += 1
 			}
+
+			_ = bar.Add(1)
+			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", stats.Catalogs, stats.Collections, stats.Items))
 
 			for _, extension := range resource.Extensions() {
 				count := stats.Extensions[extension]
@@ -84,6 +102,7 @@ var statsCommand = &cli.Command{
 			return err
 		}
 
+		_ = bar.Finish()
 		return json.NewEncoder(os.Stdout).Encode(stats)
 	},
 }
