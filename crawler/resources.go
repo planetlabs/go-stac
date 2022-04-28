@@ -5,7 +5,7 @@ const (
 	extensionsKey = "stac_extensions"
 )
 
-// ResourceType indicates the document-level STAC resource type.
+// ResourceType indicates the STAC resource type.
 type ResourceType string
 
 const (
@@ -21,8 +21,18 @@ type Resource map[string]interface{}
 func (r Resource) Type() ResourceType {
 	value, ok := r["type"]
 	if !ok {
+		// try to guess the resource type for 1.0.0-beta.2
+		if r.Version() == "1.0.0-beta.2" {
+			if _, ok := r["extent"]; ok {
+				return Collection
+			}
+			if _, ok := r["id"]; ok {
+				return Catalog
+			}
+		}
 		return ""
 	}
+
 	typeValue, ok := value.(string)
 	if !ok {
 		return ""
@@ -37,6 +47,26 @@ func (r Resource) Type() ResourceType {
 	default:
 		return ""
 	}
+}
+
+// Returns the STAC / OGC Features API conformance classes (if any).
+func (r Resource) ConformsTo() []string {
+	value, ok := r["conformsTo"]
+	if !ok {
+		return nil
+	}
+	typeValue, ok := value.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	conformsTo := []string{}
+	for _, value := range typeValue {
+		if v, ok := value.(string); ok {
+			conformsTo = append(conformsTo, v)
+		}
+	}
+	return conformsTo
 }
 
 // Version returns the STAC version.
@@ -103,4 +133,14 @@ func (r Resource) Extensions() []string {
 		extensions = append(extensions, extension)
 	}
 	return extensions
+}
+
+type featureCollectionsResponse struct {
+	Collections []Resource `json:"collections"`
+	Links       []Link     `json:"links"`
+}
+
+type featureCollectionResponse struct {
+	Features []Resource `json:"features"`
+	Links    []Link     `json:"links"`
 }
