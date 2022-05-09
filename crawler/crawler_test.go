@@ -110,3 +110,32 @@ func TestCrawlerCatalog(t *testing.T) {
 
 	assert.Equal(t, uint64(1), count)
 }
+
+func TestCrawlerAPI(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	c := crawler.New(visitor)
+
+	err := c.Crawl(context.Background(), "testdata/v1.0.0/api-catalog.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(3), count)
+
+	_, visitedCatalog := visited.Load("testdata/v1.0.0/api-catalog.json")
+	assert.True(t, visitedCatalog)
+
+	_, visitedCollection := visited.Load("testdata/v1.0.0/collection-with-items.json")
+	assert.True(t, visitedCollection)
+
+	_, visitedItem := visited.Load("testdata/v1.0.0/item-in-collection.json")
+	assert.True(t, visitedItem)
+}
