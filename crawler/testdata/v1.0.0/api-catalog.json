@@ -1,0 +1,17 @@
+{
+  "stac_version": "1.0.0",
+  "type": "Catalog",
+  "id": "api-catalog",
+  "description": "A valid API catalog",
+  "conformsTo" : [
+    "https://api.stacspec.org/v1.0.0-rc.1/core",
+    "https://api.stacspec.org/v1.0.0-rc.1/ogcapi-features"
+  ],
+  "links": [
+    {
+      "rel": "data",
+      "type": "application/json",
+      "href": "./api-collections.json"
+    }
+  ]
+}

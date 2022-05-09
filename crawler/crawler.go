@@ -264,7 +264,7 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*task], resourceUrl str
 						return err
 					}
 					worker.Add(&task{url: linkURL, kind: collectionsTask})
-					return nil
+					return c.visitor(resourceUrl, resource)
 				}
 			}
 		}
