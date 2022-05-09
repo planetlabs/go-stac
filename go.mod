@@ -6,6 +6,7 @@ require (
 	github.com/dlclark/regexp2 v1.4.0
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
+	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/schollz/progressbar/v3 v3.8.6
 	github.com/stretchr/testify v1.7.1
@@ -18,6 +19,7 @@ require (
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
