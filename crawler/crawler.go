@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/tschaub/workgroup"
 )
 
@@ -64,7 +65,7 @@ func loadFile(resourcePath string, value any) error {
 }
 
 func loadUrl(resourceUrl string, value any) error {
-	resp, err := http.DefaultClient.Get(resourceUrl)
+	resp, err := retryablehttp.Get(resourceUrl)
 	if err != nil {
 		return err
 	}
