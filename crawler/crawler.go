@@ -4,16 +4,22 @@ package crawler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/tschaub/retry"
 	"github.com/tschaub/workgroup"
 )
 
@@ -71,6 +77,29 @@ func loadFile(resourcePath string, value any) error {
 }
 
 func loadUrl(resourceUrl string, value any) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*30)
+	defer cancel()
+
+	retries := 5
+
+	return retry.Limit(ctx, retries, func(ctx context.Context, attempt int) error {
+		err := tryLoadUrl(resourceUrl, value)
+		if err == nil {
+			return nil
+		}
+
+		// these come when parsing the response body
+		if !errors.Is(err, syscall.ECONNRESET) {
+			return retry.Stop(err)
+		}
+
+		jitter := time.Duration(rand.Float64()) * time.Second
+		time.Sleep(time.Second*time.Duration(math.Pow(2, float64(attempt))) + jitter)
+		return err
+	})
+}
+
+func tryLoadUrl(resourceUrl string, value any) error {
 	resp, err := httpClient.Get(resourceUrl)
 	if err != nil {
 		return err
