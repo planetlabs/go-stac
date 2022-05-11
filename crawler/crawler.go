@@ -17,6 +17,12 @@ import (
 	"github.com/tschaub/workgroup"
 )
 
+var httpClient = retryablehttp.NewClient()
+
+func init() {
+	httpClient.Logger = nil
+}
+
 // RecursionType informs the crawler how to treat linked resources.
 // None will only call the visitor for the first resource.  Children
 // will call the visitor for all child catalogs, collections, and items.
@@ -65,7 +71,7 @@ func loadFile(resourcePath string, value any) error {
 }
 
 func loadUrl(resourceUrl string, value any) error {
-	resp, err := retryablehttp.Get(resourceUrl)
+	resp, err := httpClient.Get(resourceUrl)
 	if err != nil {
 		return err
 	}
