@@ -55,8 +55,8 @@ github.com/tschaub/limited v0.2.0 h1:XBjhp4JNhRruzRlU4/RCLGxxSmRPO+rJelpB5EVZYJU
 github.com/tschaub/limited v0.2.0/go.mod h1:MpOH3bHLpfI+6MO7P1DulWY4aXXqKdkUn8v4eMm4xOI=
 github.com/tschaub/retry v1.0.0 h1:zY9jeVNPxv2UovkFikgYOpvT5q52/3KQuJrY70MK+ws=
 github.com/tschaub/retry v1.0.0/go.mod h1:yBQOt5++ZYLg8LqzLICIFMmiG7WM45CYCnemriP95T8=
-github.com/tschaub/workgroup v0.2.0 h1:llc29/O3boFokyJkPWL3SFifcnQeD0kIcPtrmtsM0Nw=
-github.com/tschaub/workgroup v0.2.0/go.mod h1:UEtjKJmK1+hsGa6zC1sSHC6iZh8GmzesqybVruhdGX8=
+github.com/tschaub/workgroup v0.4.0 h1:xiFUdRp/tYl6sFXcT5b7jLoUEcIh/mgue1BQRrEhITY=
+github.com/tschaub/workgroup v0.4.0/go.mod h1:UEtjKJmK1+hsGa6zC1sSHC6iZh8GmzesqybVruhdGX8=
 github.com/urfave/cli/v2 v2.4.0 h1:m2pxjjDFgDxSPtO8WSdbndj17Wu2y8vOT86wE/tjr+I=
 github.com/urfave/cli/v2 v2.4.0/go.mod h1:NX9W0zmTvedE5oDoOMs2RTC8RvdK98NTYZE5LbaEYPg=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=

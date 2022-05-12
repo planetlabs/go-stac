@@ -174,6 +174,8 @@ type Options struct {
 	// a single resource.  Use Children to only visit linked item/child resources.
 	// Use All to visit parent and child resources.
 	Recursion RecursionType
+
+	Queue workgroup.Queue[*Task]
 }
 
 func (c *Crawler) apply(options *Options) {
@@ -207,17 +209,15 @@ func New(visitor Visitor, options ...*Options) *Crawler {
 	return c
 }
 
-type taskType string
-
 const (
-	resourceTask    taskType = "resource"
-	collectionsTask taskType = "collections"
-	featuresTask    taskType = "features"
+	resourceTask    = "resource"
+	collectionsTask = "collections"
+	featuresTask    = "features"
 )
 
-type task struct {
-	url  string
-	kind taskType
+type Task struct {
+	Url  string
+	Kind string
 }
 
 // Crawl calls the visitor for each resolved resource.
@@ -231,12 +231,15 @@ func (c *Crawler) Crawl(ctx context.Context, resource string) error {
 		return err
 	}
 	c.fileMode = isFilepath
-	worker := &workgroup.Worker[*task]{
+	worker := workgroup.New(&workgroup.Options[*Task]{
 		Context: ctx,
 		Limit:   c.concurrency,
 		Work:    c.crawl,
+	})
+	addErr := worker.Add(&Task{Url: resourceUrl, Kind: resourceTask})
+	if addErr != nil {
+		return addErr
 	}
-	worker.Add(&task{url: resourceUrl, kind: resourceTask})
 	return worker.Wait()
 }
 
@@ -266,20 +269,20 @@ func (c *Crawler) normalizeAndLoad(url string, value interface{}) (string, error
 	return url, loadUrl(url, value)
 }
 
-func (c *Crawler) crawl(worker *workgroup.Worker[*task], t *task) error {
-	switch t.kind {
+func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
+	switch t.Kind {
 	case resourceTask:
-		return c.crawlResource(worker, t.url)
+		return c.crawlResource(worker, t.Url)
 	case collectionsTask:
-		return c.crawlCollections(worker, t.url)
+		return c.crawlCollections(worker, t.Url)
 	case featuresTask:
-		return c.crawlFeatures(worker, t.url)
+		return c.crawlFeatures(worker, t.Url)
 	default:
-		return fmt.Errorf("unknown task type: %s", t.kind)
+		return fmt.Errorf("unknown task type: %s", t.Kind)
 	}
 }
 
-func (c *Crawler) crawlResource(worker *workgroup.Worker[*task], resourceUrl string) error {
+func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
 	if !c.shouldVisit(resourceUrl) {
 		return nil
 	}
@@ -299,7 +302,10 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*task], resourceUrl str
 					if err != nil {
 						return err
 					}
-					worker.Add(&task{url: linkURL, kind: collectionsTask})
+					addErr := worker.Add(&Task{Url: linkURL, Kind: collectionsTask})
+					if addErr != nil {
+						return addErr
+					}
 					return c.visitor(resourceUrl, resource)
 				}
 			}
@@ -320,14 +326,17 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*task], resourceUrl str
 			default:
 				continue
 			}
-			worker.Add(&task{url: linkURL, kind: resourceTask})
+			addErr := worker.Add(&Task{Url: linkURL, Kind: resourceTask})
+			if addErr != nil {
+				return addErr
+			}
 		}
 	}
 
 	return c.visitor(resourceUrl, resource)
 }
 
-func (c *Crawler) crawlCollections(worker *workgroup.Worker[*task], collectionsUrl string) error {
+func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
 	response := &featureCollectionsResponse{}
 	collectionsUrl, loadErr := c.normalizeAndLoad(collectionsUrl, response)
 	if loadErr != nil {
@@ -365,7 +374,10 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*task], collectionsU
 		if err := c.visitor(selfUrl, resource); err != nil {
 			return err
 		}
-		worker.Add(&task{url: itemsUrl, kind: featuresTask})
+		addErr := worker.Add(&Task{Url: itemsUrl, Kind: featuresTask})
+		if addErr != nil {
+			return addErr
+		}
 	}
 
 	for _, link := range response.Links {
@@ -374,14 +386,17 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*task], collectionsU
 			if err != nil {
 				return err
 			}
-			worker.Add(&task{url: nextUrl, kind: collectionsTask})
+			addErr := worker.Add(&Task{Url: nextUrl, Kind: collectionsTask})
+			if addErr != nil {
+				return addErr
+			}
 			break
 		}
 	}
 	return nil
 }
 
-func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*task], featuresUrl string) error {
+func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
 	response := &featureCollectionResponse{}
 	featuresUrl, loadErr := c.normalizeAndLoad(featuresUrl, response)
 	if loadErr != nil {
@@ -418,7 +433,10 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*task], featuresUrl str
 			if err != nil {
 				return err
 			}
-			worker.Add(&task{url: nextUrl, kind: featuresTask})
+			addErr := worker.Add(&Task{Url: nextUrl, Kind: featuresTask})
+			if addErr != nil {
+				return addErr
+			}
 			break
 		}
 	}
