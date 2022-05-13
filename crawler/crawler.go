@@ -221,7 +221,7 @@ const (
 
 type Task struct {
 	Url  string
-	Kind string
+	Type string
 }
 
 // Crawl calls the visitor for each resolved resource.
@@ -241,7 +241,7 @@ func (c *Crawler) Crawl(ctx context.Context, resource string) error {
 		Work:    c.crawl,
 		Queue:   c.queue,
 	})
-	addErr := worker.Add(&Task{Url: resourceUrl, Kind: resourceTask})
+	addErr := worker.Add(&Task{Url: resourceUrl, Type: resourceTask})
 	if addErr != nil {
 		return addErr
 	}
@@ -275,7 +275,7 @@ func (c *Crawler) normalizeAndLoad(url string, value interface{}) (string, error
 }
 
 func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
-	switch t.Kind {
+	switch t.Type {
 	case resourceTask:
 		return c.crawlResource(worker, t.Url)
 	case collectionsTask:
@@ -283,7 +283,7 @@ func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 	case featuresTask:
 		return c.crawlFeatures(worker, t.Url)
 	default:
-		return fmt.Errorf("unknown task type: %s", t.Kind)
+		return fmt.Errorf("unknown task type: %s", t.Type)
 	}
 }
 
@@ -307,7 +307,7 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 					if err != nil {
 						return err
 					}
-					addErr := worker.Add(&Task{Url: linkURL, Kind: collectionsTask})
+					addErr := worker.Add(&Task{Url: linkURL, Type: collectionsTask})
 					if addErr != nil {
 						return addErr
 					}
@@ -331,7 +331,7 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 			default:
 				continue
 			}
-			addErr := worker.Add(&Task{Url: linkURL, Kind: resourceTask})
+			addErr := worker.Add(&Task{Url: linkURL, Type: resourceTask})
 			if addErr != nil {
 				return addErr
 			}
@@ -379,7 +379,7 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		if err := c.visitor(selfUrl, resource); err != nil {
 			return err
 		}
-		addErr := worker.Add(&Task{Url: itemsUrl, Kind: featuresTask})
+		addErr := worker.Add(&Task{Url: itemsUrl, Type: featuresTask})
 		if addErr != nil {
 			return addErr
 		}
@@ -391,7 +391,7 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 			if err != nil {
 				return err
 			}
-			addErr := worker.Add(&Task{Url: nextUrl, Kind: collectionsTask})
+			addErr := worker.Add(&Task{Url: nextUrl, Type: collectionsTask})
 			if addErr != nil {
 				return addErr
 			}
@@ -438,7 +438,7 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 			if err != nil {
 				return err
 			}
-			addErr := worker.Add(&Task{Url: nextUrl, Kind: featuresTask})
+			addErr := worker.Add(&Task{Url: nextUrl, Type: featuresTask})
 			if addErr != nil {
 				return addErr
 			}
