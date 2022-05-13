@@ -163,6 +163,7 @@ type Crawler struct {
 	visited     *sync.Map
 	recursion   RecursionType
 	concurrency int
+	queue       workgroup.Queue[*Task]
 }
 
 // Options for creating a crawler.
@@ -184,6 +185,9 @@ func (c *Crawler) apply(options *Options) {
 	}
 	if options.Recursion != "" {
 		c.recursion = options.Recursion
+	}
+	if options.Queue != nil {
+		c.queue = options.Queue
 	}
 }
 
@@ -235,6 +239,7 @@ func (c *Crawler) Crawl(ctx context.Context, resource string) error {
 		Context: ctx,
 		Limit:   c.concurrency,
 		Work:    c.crawl,
+		Queue:   c.queue,
 	})
 	addErr := worker.Add(&Task{Url: resourceUrl, Kind: resourceTask})
 	if addErr != nil {
