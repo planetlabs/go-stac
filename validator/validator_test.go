@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/planetlabs/go-stac/crawler"
@@ -87,14 +88,14 @@ func TestSuite(t *testing.T) {
 }
 
 func ExampleValidator_Validate_children() {
-	v := validator.New(&validator.Options{
-		Recursion: crawler.Children,
-	})
+	v := validator.New()
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
-	fmt.Printf("%#v\n", err)
+
+	workdir, _ := os.Getwd()
+	fmt.Println(strings.Replace(fmt.Sprintf("%#v\n", err), workdir, "/path/to", 1))
 	// Output:
-	// invalid item: testdata/cases/v1.0.0/item-missing-id.json
+	// invalid item: /path/to/testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
@@ -103,14 +104,14 @@ func ExampleValidator_Validate_children() {
 }
 
 func ExampleValidator_Validate_single() {
-	v := validator.New(&validator.Options{
-		Recursion: crawler.None,
-	})
+	v := validator.New()
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")
-	fmt.Printf("%#v\n", err)
+
+	workdir, _ := os.Getwd()
+	fmt.Println(strings.Replace(fmt.Sprintf("%#v\n", err), workdir, "/path/to", 1))
 	// Output:
-	// invalid item: testdata/cases/v1.0.0/item-missing-id.json
+	// invalid item: /path/to/testdata/cases/v1.0.0/item-missing-id.json
 	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
 	//   [I#] [S#/allOf/0] allOf failed
 	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
