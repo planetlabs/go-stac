@@ -10,14 +10,14 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	"net/url"
-	"path/filepath"
+	"os"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/planetlabs/go-stac/internal/normurl"
 	"github.com/tschaub/retry"
 	"github.com/tschaub/workgroup"
 )
@@ -39,49 +39,27 @@ const (
 	Children RecursionType = "children"
 )
 
-func normalizeUrl(resourceUrl string) (string, bool, error) {
-	u, err := url.Parse(resourceUrl)
-	if err != nil {
-		return "", false, err
-	}
-	if u.Scheme == "" {
-		return resourceUrl, true, nil
-	}
-	if u.Scheme == "file" {
-		resourceUrl := strings.TrimPrefix(resourceUrl, "file://")
-		if runtime.GOOS == "windows" {
-			resourceUrl = filepath.FromSlash(strings.TrimPrefix(resourceUrl, "/"))
-			return resourceUrl, true, nil
-		}
-		return resourceUrl, true, nil
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", false, fmt.Errorf("unsupported scheme: %s", u.Scheme)
-	}
-	return resourceUrl, false, nil
-}
-
-func loadFile(resourcePath string, value any) error {
-	data, readErr := ioutil.ReadFile(resourcePath)
+func loadFile(loc *normurl.Locator, value any) error {
+	data, readErr := ioutil.ReadFile(loc.String())
 	if readErr != nil {
-		return fmt.Errorf("failed to read file %s: %w", resourcePath, readErr)
+		return fmt.Errorf("failed to read file %s: %w", loc, readErr)
 	}
 
 	jsonErr := json.Unmarshal(data, value)
 	if jsonErr != nil {
-		return fmt.Errorf("failed to parse %s: %w", resourcePath, jsonErr)
+		return fmt.Errorf("failed to parse %s: %w", loc, jsonErr)
 	}
 	return nil
 }
 
-func loadUrl(resourceUrl string, value any) error {
+func loadUrl(loc *normurl.Locator, value any) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*30)
 	defer cancel()
 
 	retries := 5
 
 	return retry.Limit(ctx, retries, func(ctx context.Context, attempt int) error {
-		err := tryLoadUrl(resourceUrl, value)
+		err := tryLoadUrl(loc, value)
 		if err == nil {
 			return nil
 		}
@@ -97,55 +75,21 @@ func loadUrl(resourceUrl string, value any) error {
 	})
 }
 
-func tryLoadUrl(resourceUrl string, value any) error {
-	resp, err := httpClient.Get(resourceUrl)
+func tryLoadUrl(loc *normurl.Locator, value any) error {
+	resp, err := httpClient.Get(loc.String())
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
-		return fmt.Errorf("unexpected response for %s: %d", resourceUrl, resp.StatusCode)
+		return fmt.Errorf("unexpected response for %s: %d", loc, resp.StatusCode)
 	}
 
 	jsonErr := json.NewDecoder(resp.Body).Decode(value)
 	if jsonErr != nil {
-		return fmt.Errorf("failed to parse %s: %w", resourceUrl, jsonErr)
+		return fmt.Errorf("failed to parse %s: %w", loc, jsonErr)
 	}
 	return nil
-}
-
-func resolveURL(baseUrl string, resourceUrl string) (string, error) {
-	res, resIsRelOrFile, err := normalizeUrl(resourceUrl)
-	if err != nil {
-		return "", err
-	}
-
-	if !resIsRelOrFile {
-		return res, nil
-	}
-
-	base, baseIsFilePath, err := normalizeUrl(baseUrl)
-	if err != nil {
-		return "", err
-	}
-
-	if baseIsFilePath {
-		baseDir := filepath.Dir(base)
-		return filepath.Join(baseDir, res), nil
-	}
-
-	b, err := url.Parse(baseUrl)
-	if err != nil {
-		return "", err
-	}
-
-	r, err := url.Parse(res)
-	if err != nil {
-		return "", err
-	}
-
-	resolved := b.ResolveReference(r)
-	return resolved.String(), nil
 }
 
 // Visitor is called for each resource during crawling.
@@ -225,40 +169,45 @@ type Task struct {
 // will stop crawling and be returned by this function.  Context cancellation
 // will also stop crawling and the context error will be returned.
 func (c *Crawler) Crawl(ctx context.Context, resource string) error {
-	resourceUrl, isFilepath, err := normalizeUrl(resource)
-	if err != nil {
-		return err
+	wd, wdErr := os.Getwd()
+	if wdErr != nil {
+		return fmt.Errorf("failed to get working directory: %w", wdErr)
 	}
-	c.fileMode = isFilepath
+	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
+	if baseErr != nil {
+		return fmt.Errorf("failed to parse working directory: %w", baseErr)
+	}
+
+	loc, locErr := base.Resolve(resource)
+	if locErr != nil {
+		return locErr
+	}
+	c.fileMode = loc.IsFilepath()
 	worker := workgroup.New(&workgroup.Options[*Task]{
 		Context: ctx,
 		Limit:   c.concurrency,
 		Work:    c.crawl,
 		Queue:   c.queue,
 	})
-	addErr := worker.Add(&Task{Url: resourceUrl, Type: resourceTask})
+	addErr := worker.Add(&Task{Url: loc.String(), Type: resourceTask})
 	if addErr != nil {
 		return addErr
 	}
 	return worker.Wait()
 }
 
-func (c *Crawler) normalizeAndLoad(url string, value interface{}) (string, error) {
-	url, isFilepath, err := normalizeUrl(url)
-	if err != nil {
-		return url, err
+func (c *Crawler) load(loc *normurl.Locator, value interface{}) error {
+	if loc.IsFilepath() {
+		if !c.fileMode {
+			return fmt.Errorf("cannot crawl file %s in non-file mode", loc)
+		}
+		return loadFile(loc, value)
 	}
 
-	if isFilepath {
-		if !c.fileMode {
-			return url, fmt.Errorf("cannot crawl file %s in non-file mode", url)
-		}
-		return url, loadFile(url, value)
-	}
 	if c.fileMode {
-		return url, fmt.Errorf("cannot crawl URL %s in file mode", url)
+		return fmt.Errorf("cannot crawl URL %s in file mode", loc)
 	}
-	return url, loadUrl(url, value)
+	return loadUrl(loc, value)
 }
 
 func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
@@ -275,8 +224,13 @@ func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 }
 
 func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
+	loc, locErr := normurl.New(resourceUrl)
+	if locErr != nil {
+		return locErr
+	}
+
 	resource := Resource{}
-	resourceUrl, loadErr := c.normalizeAndLoad(resourceUrl, &resource)
+	loadErr := c.load(loc, &resource)
 	if loadErr != nil {
 		return loadErr
 	}
@@ -289,11 +243,11 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
 		for _, link := range resource.Links() {
 			if link["rel"] == "data" {
-				linkURL, err := resolveURL(resourceUrl, link["href"])
+				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				addErr := worker.Add(&Task{Url: linkURL, Type: collectionsTask})
+				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 				if addErr != nil {
 					return addErr
 				}
@@ -306,11 +260,11 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 		// shortcut for "items" link
 		for _, link := range resource.Links() {
 			if link["rel"] == "items" {
-				linkURL, err := resolveURL(resourceUrl, link["href"])
+				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				addErr := worker.Add(&Task{Url: linkURL, Type: featuresTask})
+				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 				if addErr != nil {
 					return addErr
 				}
@@ -320,13 +274,13 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	}
 
 	for _, link := range resource.Links() {
-		linkURL, err := resolveURL(resourceUrl, link["href"])
+		linkLoc, err := loc.Resolve(link["href"])
 		if err != nil {
 			return err
 		}
 		rel := link["rel"]
 		if rel == "item" || rel == "child" {
-			addErr := worker.Add(&Task{Url: linkURL, Type: resourceTask})
+			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
 			if addErr != nil {
 				return addErr
 			}
@@ -337,8 +291,12 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 }
 
 func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
+	loc, locErr := normurl.New(collectionsUrl)
+	if locErr != nil {
+		return locErr
+	}
 	response := &featureCollectionsResponse{}
-	collectionsUrl, loadErr := c.normalizeAndLoad(collectionsUrl, response)
+	loadErr := c.load(loc, response)
 	if loadErr != nil {
 		return loadErr
 	}
@@ -353,18 +311,18 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 			rel := link["rel"]
 			linkType := link["type"]
 			if selfUrl == "" && rel == "self" && strings.HasSuffix(linkType, "json") {
-				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
+				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				selfUrl = resolvedUrl
+				selfUrl = linkLoc.String()
 			}
 			if itemsUrl == "" && rel == "items" && strings.HasSuffix(linkType, "json") {
-				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
+				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				itemsUrl = resolvedUrl
+				itemsUrl = linkLoc.String()
 			}
 		}
 		if selfUrl == "" {
@@ -384,11 +342,11 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 
 	for _, link := range response.Links {
 		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
-			nextUrl, err := resolveURL(collectionsUrl, link["href"])
+			linkLoc, err := loc.Resolve(link["href"])
 			if err != nil {
 				return err
 			}
-			addErr := worker.Add(&Task{Url: nextUrl, Type: collectionsTask})
+			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 			if addErr != nil {
 				return addErr
 			}
@@ -399,8 +357,13 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 }
 
 func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
+	loc, locErr := normurl.New(featuresUrl)
+	if locErr != nil {
+		return locErr
+	}
+
 	response := &featureCollectionResponse{}
-	featuresUrl, loadErr := c.normalizeAndLoad(featuresUrl, response)
+	loadErr := c.load(loc, response)
 	if loadErr != nil {
 		return loadErr
 	}
@@ -412,11 +375,11 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 		var itemUrl string
 		for _, link := range resource.Links() {
 			if link["rel"] == "self" && strings.HasSuffix(link["type"], "json") {
-				resolvedUrl, err := resolveURL(featuresUrl, link["href"])
+				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				itemUrl = resolvedUrl
+				itemUrl = linkLoc.String()
 				break
 			}
 		}
@@ -431,11 +394,11 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 
 	for _, link := range response.Links {
 		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
-			nextUrl, err := resolveURL(featuresUrl, link["href"])
+			linkLoc, err := loc.Resolve(link["href"])
 			if err != nil {
 				return err
 			}
-			addErr := worker.Add(&Task{Url: nextUrl, Type: featuresTask})
+			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 			if addErr != nil {
 				return addErr
 			}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -179,13 +181,16 @@ func TestCrawlerAPI(t *testing.T) {
 
 	assert.Equal(t, uint64(3), count)
 
-	_, visitedCatalog := visited.Load("testdata/v1.0.0/api-catalog.json")
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/api-catalog.json"))
 	assert.True(t, visitedCatalog)
 
-	_, visitedCollection := visited.Load("testdata/v1.0.0/collection-with-items.json")
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
 	assert.True(t, visitedCollection)
 
-	_, visitedItem := visited.Load("testdata/v1.0.0/item-in-collection.json")
+	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
 	assert.True(t, visitedItem)
 }
 
@@ -208,9 +213,12 @@ func TestCrawlerAPICollection(t *testing.T) {
 
 	assert.Equal(t, uint64(2), count)
 
-	_, visitedCollection := visited.Load("testdata/v1.0.0/api-collection.json")
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/api-collection.json"))
 	assert.True(t, visitedCollection)
 
-	_, visitedItem := visited.Load("testdata/v1.0.0/item-in-collection.json")
+	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
 	assert.True(t, visitedItem)
 }
