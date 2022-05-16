@@ -350,14 +350,16 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		var selfUrl string
 		var itemsUrl string
 		for _, link := range resource.Links() {
-			if selfUrl == "" && link["rel"] == "self" && link["type"] == "application/json" {
+			rel := link["rel"]
+			linkType := link["type"]
+			if selfUrl == "" && rel == "self" && strings.HasSuffix(linkType, "json") {
 				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
 				if err != nil {
 					return err
 				}
 				selfUrl = resolvedUrl
 			}
-			if itemsUrl == "" && link["rel"] == "items" && (link["type"] == "application/geo+json" || link["type"] == "application/json") {
+			if itemsUrl == "" && rel == "items" && strings.HasSuffix(linkType, "json") {
 				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
 				if err != nil {
 					return err
@@ -381,7 +383,7 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 	}
 
 	for _, link := range response.Links {
-		if link["rel"] == "next" && link["type"] == "application/json" {
+		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
 			nextUrl, err := resolveURL(collectionsUrl, link["href"])
 			if err != nil {
 				return err
@@ -409,7 +411,7 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 
 		var itemUrl string
 		for _, link := range resource.Links() {
-			if link["rel"] == "self" && link["type"] == "application/geo+json" {
+			if link["rel"] == "self" && strings.HasSuffix(link["type"], "json") {
 				resolvedUrl, err := resolveURL(featuresUrl, link["href"])
 				if err != nil {
 					return err
@@ -428,7 +430,7 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 	}
 
 	for _, link := range response.Links {
-		if link["rel"] == "next" && link["type"] == "application/json" {
+		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
 			nextUrl, err := resolveURL(featuresUrl, link["href"])
 			if err != nil {
 				return err
