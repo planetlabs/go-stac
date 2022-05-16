@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var recursionValues = []string{string(crawler.All), string(crawler.None), string(crawler.Children)}
+var recursionValues = []string{string(crawler.None), string(crawler.Children)}
 
 var validateCommand = &cli.Command{
 	Name:        "validate",

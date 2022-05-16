@@ -140,26 +140,6 @@ func TestCrawlerChildren(t *testing.T) {
 	assert.Equal(t, uint64(2), count)
 }
 
-func TestCrawlerAll(t *testing.T) {
-	count := uint64(0)
-	visited := &sync.Map{}
-
-	visitor := func(location string, resource crawler.Resource) error {
-		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
-		if loaded {
-			return fmt.Errorf("already visited %s", location)
-		}
-		return nil
-	}
-	c := crawler.New(visitor, &crawler.Options{Recursion: crawler.All})
-
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/item-in-collection.json")
-	assert.NoError(t, err)
-
-	assert.Equal(t, uint64(3), count)
-}
-
 func TestCrawlerCatalog(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
@@ -203,6 +183,32 @@ func TestCrawlerAPI(t *testing.T) {
 	assert.True(t, visitedCatalog)
 
 	_, visitedCollection := visited.Load("testdata/v1.0.0/collection-with-items.json")
+	assert.True(t, visitedCollection)
+
+	_, visitedItem := visited.Load("testdata/v1.0.0/item-in-collection.json")
+	assert.True(t, visitedItem)
+}
+
+func TestCrawlerAPICollection(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	c := crawler.New(visitor)
+
+	err := c.Crawl(context.Background(), "testdata/v1.0.0/api-collection.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(2), count)
+
+	_, visitedCollection := visited.Load("testdata/v1.0.0/api-collection.json")
 	assert.True(t, visitedCollection)
 
 	_, visitedItem := visited.Load("testdata/v1.0.0/item-in-collection.json")

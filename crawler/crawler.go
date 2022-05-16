@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -36,7 +35,6 @@ func init() {
 type RecursionType string
 
 const (
-	All      RecursionType = "all"
 	None     RecursionType = "none"
 	Children RecursionType = "children"
 )
@@ -160,7 +158,6 @@ type Visitor func(string, Resource) error
 type Crawler struct {
 	fileMode    bool
 	visitor     Visitor
-	visited     *sync.Map
 	recursion   RecursionType
 	concurrency int
 	queue       workgroup.Queue[*Task]
@@ -173,7 +170,6 @@ type Options struct {
 
 	// Strategy to use when crawling linked resources.  Use None to visit
 	// a single resource.  Use Children to only visit linked item/child resources.
-	// Use All to visit parent and child resources.
 	Recursion RecursionType
 
 	Queue workgroup.Queue[*Task]
@@ -204,7 +200,6 @@ var DefaultOptions = &Options{
 func New(visitor Visitor, options ...*Options) *Crawler {
 	c := &Crawler{
 		visitor: visitor,
-		visited: &sync.Map{},
 	}
 	c.apply(DefaultOptions)
 	for _, opt := range options {
@@ -248,14 +243,6 @@ func (c *Crawler) Crawl(ctx context.Context, resource string) error {
 	return worker.Wait()
 }
 
-func (c *Crawler) shouldVisit(resourceUrl string) bool {
-	if c.recursion != All {
-		return true
-	}
-	_, visited := c.visited.LoadOrStore(resourceUrl, true)
-	return !visited
-}
-
 func (c *Crawler) normalizeAndLoad(url string, value interface{}) (string, error) {
 	url, isFilepath, err := normalizeUrl(url)
 	if err != nil {
@@ -288,49 +275,57 @@ func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 }
 
 func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
-	if !c.shouldVisit(resourceUrl) {
-		return nil
-	}
-
 	resource := Resource{}
 	resourceUrl, loadErr := c.normalizeAndLoad(resourceUrl, &resource)
 	if loadErr != nil {
 		return loadErr
 	}
 
-	if c.recursion != None {
-		// check if this looks like a STAC API root catalog that implements OGC API - Features
-		if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
-			for _, link := range resource.Links() {
-				if link["rel"] == "data" {
-					linkURL, err := resolveURL(resourceUrl, link["href"])
-					if err != nil {
-						return err
-					}
-					addErr := worker.Add(&Task{Url: linkURL, Type: collectionsTask})
-					if addErr != nil {
-						return addErr
-					}
-					return c.visitor(resourceUrl, resource)
+	if c.recursion == None {
+		return c.visitor(resourceUrl, resource)
+	}
+
+	// check if this looks like a STAC API root catalog that implements OGC API - Features
+	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
+		for _, link := range resource.Links() {
+			if link["rel"] == "data" {
+				linkURL, err := resolveURL(resourceUrl, link["href"])
+				if err != nil {
+					return err
 				}
+				addErr := worker.Add(&Task{Url: linkURL, Type: collectionsTask})
+				if addErr != nil {
+					return addErr
+				}
+				return c.visitor(resourceUrl, resource)
 			}
 		}
+	}
 
+	if resource.Type() == Collection {
+		// shortcut for "items" link
 		for _, link := range resource.Links() {
-			linkURL, err := resolveURL(resourceUrl, link["href"])
-			if err != nil {
-				return err
-			}
-			switch link["rel"] {
-			case "root", "parent":
-				if c.recursion != All {
-					continue
+			if link["rel"] == "items" {
+				linkURL, err := resolveURL(resourceUrl, link["href"])
+				if err != nil {
+					return err
 				}
-			case "item", "child":
-				break
-			default:
-				continue
+				addErr := worker.Add(&Task{Url: linkURL, Type: featuresTask})
+				if addErr != nil {
+					return addErr
+				}
+				return c.visitor(resourceUrl, resource)
 			}
+		}
+	}
+
+	for _, link := range resource.Links() {
+		linkURL, err := resolveURL(resourceUrl, link["href"])
+		if err != nil {
+			return err
+		}
+		rel := link["rel"]
+		if rel == "item" || rel == "child" {
 			addErr := worker.Add(&Task{Url: linkURL, Type: resourceTask})
 			if addErr != nil {
 				return addErr
@@ -355,14 +350,16 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		var selfUrl string
 		var itemsUrl string
 		for _, link := range resource.Links() {
-			if selfUrl == "" && link["rel"] == "self" && link["type"] == "application/json" {
+			rel := link["rel"]
+			linkType := link["type"]
+			if selfUrl == "" && rel == "self" && strings.HasSuffix(linkType, "json") {
 				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
 				if err != nil {
 					return err
 				}
 				selfUrl = resolvedUrl
 			}
-			if itemsUrl == "" && link["rel"] == "items" && (link["type"] == "application/geo+json" || link["type"] == "application/json") {
+			if itemsUrl == "" && rel == "items" && strings.HasSuffix(linkType, "json") {
 				resolvedUrl, err := resolveURL(collectionsUrl, link["href"])
 				if err != nil {
 					return err
@@ -386,7 +383,7 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 	}
 
 	for _, link := range response.Links {
-		if link["rel"] == "next" && link["type"] == "application/json" {
+		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
 			nextUrl, err := resolveURL(collectionsUrl, link["href"])
 			if err != nil {
 				return err
@@ -414,7 +411,7 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 
 		var itemUrl string
 		for _, link := range resource.Links() {
-			if link["rel"] == "self" && link["type"] == "application/geo+json" {
+			if link["rel"] == "self" && strings.HasSuffix(link["type"], "json") {
 				resolvedUrl, err := resolveURL(featuresUrl, link["href"])
 				if err != nil {
 					return err
@@ -433,7 +430,7 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 	}
 
 	for _, link := range response.Links {
-		if link["rel"] == "next" && link["type"] == "application/json" {
+		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
 			nextUrl, err := resolveURL(featuresUrl, link["href"])
 			if err != nil {
 				return err
