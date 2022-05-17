@@ -82,11 +82,8 @@ func (r Resource) Version() string {
 	return version
 }
 
-// Link represents a link to a resource.
-type Link map[string]string
-
 // Links returns the resource links.
-func (r Resource) Links() []Link {
+func (r Resource) Links() Links {
 	links := []Link{}
 	value, ok := r["links"]
 	if !ok {
@@ -137,10 +134,10 @@ func (r Resource) Extensions() []string {
 
 type featureCollectionsResponse struct {
 	Collections []Resource `json:"collections"`
-	Links       []Link     `json:"links"`
+	Links       Links      `json:"links"`
 }
 
 type featureCollectionResponse struct {
 	Features []Resource `json:"features"`
-	Links    []Link     `json:"links"`
+	Links    Links      `json:"links"`
 }

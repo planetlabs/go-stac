@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
@@ -252,50 +251,51 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 		return c.visitor(resourceUrl, resource)
 	}
 
+	links := resource.Links()
 	// check if this looks like a STAC API root catalog that implements OGC API - Features
 	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
-		for _, link := range resource.Links() {
-			if link["rel"] == "data" {
-				linkLoc, err := loc.Resolve(link["href"])
-				if err != nil {
-					return err
-				}
-				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
-				if addErr != nil {
-					return addErr
-				}
-				return c.visitor(resourceUrl, resource)
+		dataLink := links.Rel("data", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if dataLink != nil {
+			linkLoc, err := loc.Resolve(dataLink["href"])
+			if err != nil {
+				return err
 			}
+			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+			if addErr != nil {
+				return addErr
+			}
+			return c.visitor(resourceUrl, resource)
 		}
 	}
 
 	if resource.Type() == Collection {
 		// shortcut for "items" link
-		for _, link := range resource.Links() {
-			if link["rel"] == "items" {
+		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if itemsLink != nil {
+			linkLoc, err := loc.Resolve(itemsLink["href"])
+			if err != nil {
+				return err
+			}
+			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+			if addErr != nil {
+				return addErr
+			}
+			return c.visitor(resourceUrl, resource)
+		}
+	}
+
+	for _, link := range links {
+		rel := link["rel"]
+		if rel == "item" || rel == "child" {
+			if LinkTypeApplicationJSON(link) || LinkTypeAnyJSON(link) || LinkTypeNone(link) {
 				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
 					return err
 				}
-				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
 				if addErr != nil {
 					return addErr
 				}
-				return c.visitor(resourceUrl, resource)
-			}
-		}
-	}
-
-	for _, link := range resource.Links() {
-		linkLoc, err := loc.Resolve(link["href"])
-		if err != nil {
-			return err
-		}
-		rel := link["rel"]
-		if rel == "item" || rel == "child" {
-			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
-			if addErr != nil {
-				return addErr
 			}
 		}
 	}
@@ -318,54 +318,46 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		if resource.Type() != Collection {
 			return fmt.Errorf("expected collection at index %d, got %s", i, resource.Type())
 		}
-		var selfUrl string
-		var itemsUrl string
-		for _, link := range resource.Links() {
-			rel := link["rel"]
-			linkType := link["type"]
-			if selfUrl == "" && rel == "self" && strings.HasSuffix(linkType, "json") {
-				linkLoc, err := loc.Resolve(link["href"])
-				if err != nil {
-					return err
-				}
-				selfUrl = linkLoc.String()
-			}
-			if itemsUrl == "" && rel == "items" && strings.HasSuffix(linkType, "json") {
-				linkLoc, err := loc.Resolve(link["href"])
-				if err != nil {
-					return err
-				}
-				itemsUrl = linkLoc.String()
-			}
-		}
-		if selfUrl == "" {
+		links := resource.Links()
+
+		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if selfLink == nil {
 			return fmt.Errorf("missing self link for collection %d in %s", i, collectionsUrl)
 		}
-		if itemsUrl == "" {
-			return fmt.Errorf("missing items link for collection %d in %s", i, collectionsUrl)
+		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		if selfLinkErr != nil {
+			return selfLinkErr
 		}
-		if err := c.visitor(selfUrl, resource); err != nil {
+		if err := c.visitor(selfLinkLoc.String(), resource); err != nil {
 			return err
 		}
-		addErr := worker.Add(&Task{Url: itemsUrl, Type: featuresTask})
+
+		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if itemsLink == nil {
+			return fmt.Errorf("missing items link for collection %d in %s", i, collectionsUrl)
+		}
+		itemsLinkLoc, itemsLinkErr := loc.Resolve(itemsLink["href"])
+		if itemsLinkErr != nil {
+			return itemsLinkErr
+		}
+		addErr := worker.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
 		if addErr != nil {
 			return addErr
 		}
 	}
 
-	for _, link := range response.Links {
-		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
-			linkLoc, err := loc.Resolve(link["href"])
-			if err != nil {
-				return err
-			}
-			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
-			if addErr != nil {
-				return addErr
-			}
-			break
+	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+	if nextLink != nil {
+		linkLoc, err := loc.Resolve(nextLink["href"])
+		if err != nil {
+			return err
+		}
+		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+		if addErr != nil {
+			return addErr
 		}
 	}
+
 	return nil
 }
 
@@ -385,38 +377,33 @@ func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 			return fmt.Errorf("expected item at index %d, got %s", i, resource.Type())
 		}
 
-		var itemUrl string
-		for _, link := range resource.Links() {
-			if link["rel"] == "self" && strings.HasSuffix(link["type"], "json") {
-				linkLoc, err := loc.Resolve(link["href"])
-				if err != nil {
-					return err
-				}
-				itemUrl = linkLoc.String()
-				break
-			}
-		}
-		if itemUrl == "" {
+		links := resource.Links()
+		selfLink := links.Rel("self", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if selfLink == nil {
 			return fmt.Errorf("missing self link for item %d in %s", i, featuresUrl)
 		}
 
-		if err := c.visitor(itemUrl, resource); err != nil {
+		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		if selfLinkErr != nil {
+			return selfLinkErr
+		}
+
+		if err := c.visitor(selfLinkLoc.String(), resource); err != nil {
 			return err
 		}
 	}
 
-	for _, link := range response.Links {
-		if link["rel"] == "next" && strings.HasSuffix(link["type"], "json") {
-			linkLoc, err := loc.Resolve(link["href"])
-			if err != nil {
-				return err
-			}
-			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
-			if addErr != nil {
-				return addErr
-			}
-			break
+	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+	if nextLink != nil {
+		linkLoc, err := loc.Resolve(nextLink["href"])
+		if err != nil {
+			return err
+		}
+		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+		if addErr != nil {
+			return addErr
 		}
 	}
+
 	return nil
 }
