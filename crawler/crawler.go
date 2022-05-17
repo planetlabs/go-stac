@@ -104,6 +104,7 @@ type Crawler struct {
 	visitor     Visitor
 	recursion   RecursionType
 	concurrency int
+	filter      func(string) bool
 	queue       workgroup.Queue[*Task]
 }
 
@@ -115,6 +116,12 @@ type Options struct {
 	// Strategy to use when crawling linked resources.  Use None to visit
 	// a single resource.  Use Children to only visit linked item/child resources.
 	Recursion RecursionType
+
+	// Optional function to limit which resources to crawl.  If provided, the function
+	// will be called with the URL or absolute path to a resource before it is crawled.
+	// If the function returns false, the resource will not be read and the visitor will
+	// not be called.
+	Filter func(string) bool
 
 	Queue workgroup.Queue[*Task]
 }
@@ -128,6 +135,9 @@ func (c *Crawler) apply(options *Options) {
 	}
 	if options.Queue != nil {
 		c.queue = options.Queue
+	}
+	if options.Filter != nil {
+		c.filter = options.Filter
 	}
 }
 
@@ -211,6 +221,9 @@ func (c *Crawler) load(loc *normurl.Locator, value interface{}) error {
 }
 
 func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
+	if c.filter != nil && !c.filter(t.Url) {
+		return nil
+	}
 	switch t.Type {
 	case resourceTask:
 		return c.crawlResource(worker, t.Url)
