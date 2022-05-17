@@ -35,6 +35,81 @@ func TestCrawler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(3), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	assert.True(t, visitedCatalog)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
+	assert.True(t, visitedCollection)
+
+	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
+	assert.True(t, visitedItem)
+}
+
+func TestCrawlerFilterItem(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	c := crawler.New(visitor, &crawler.Options{
+		Filter: func(location string) bool {
+			return !strings.HasSuffix(location, "/item-in-collection.json")
+		},
+	})
+
+	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(2), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	assert.True(t, visitedCatalog)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
+	assert.True(t, visitedCollection)
+}
+
+func TestCrawlerFilterCollection(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	c := crawler.New(visitor, &crawler.Options{
+		Filter: func(location string) bool {
+			return !strings.HasSuffix(location, "/collection-with-items.json")
+		},
+	})
+
+	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(1), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	assert.True(t, visitedCatalog)
 }
 
 func TestCrawlerHTTP(t *testing.T) {
