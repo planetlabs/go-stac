@@ -1,5 +1,11 @@
 package crawler
 
+import (
+	"fmt"
+
+	"golang.org/x/mod/semver"
+)
+
 const (
 	versionKey    = "stac_version"
 	extensionsKey = "stac_extensions"
@@ -17,12 +23,16 @@ const (
 // Resource represents a STAC catalog, collection, or item.
 type Resource map[string]interface{}
 
+func (r Resource) compareVersion(otherVersion string) int {
+	return semver.Compare(fmt.Sprintf("v%s", r.Version()), fmt.Sprintf("v%s", otherVersion))
+}
+
 // Type returns the specific resource type.
 func (r Resource) Type() ResourceType {
 	value, ok := r["type"]
 	if !ok {
-		// try to guess the resource type for 1.0.0-beta.2
-		if r.Version() == "1.0.0-beta.2" {
+		// try to guess the resource type for <= 1.0.0-beta.2
+		if r.compareVersion("1.0.0-beta.2") <= 0 {
 			if _, ok := r["extent"]; ok {
 				return Collection
 			}

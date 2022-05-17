@@ -1,0 +1,71 @@
+{
+  "id": "5633320870809797824",
+  "stac_version": "0.8.1",
+  "description": "Order 5633320870809797824 collection",
+  "links": [
+    {
+      "rel": "root",
+      "href": "./5633320870809797824_root_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "../acquisition_collections/10300100B51C4600_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "../acquisition_collections/10300100B0A32C00_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "../acquisition_collections/103001009BD57700_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "../acquisition_collections/103001008815D500_collection.json",
+      "type": "application/json"
+    }
+  ],
+  "extent": {
+    "spatial": {
+      "bbox": [
+        [
+          43.104744579911056,
+          36.2635417013712,
+          43.21949284212573,
+          36.358231483123724
+        ],
+        [
+          43.104744579911056,
+          36.280714293351785,
+          43.21949284212573,
+          36.358231483123724
+        ],
+        [
+          43.104744579911056,
+          36.2635417013712,
+          43.21949284212573,
+          36.358231483123724
+        ],
+        [
+          43.104744579911056,
+          36.2635417013712,
+          43.21949284212573,
+          36.358231483123724
+        ]
+      ]
+    },
+    "temporal": {
+      "interval": [
+        [
+          "2018-12-15 07:58:38Z",
+          "2021-02-26 07:49:44Z"
+        ]
+      ]
+    }
+  },
+  "license": "proprietary"
+}
