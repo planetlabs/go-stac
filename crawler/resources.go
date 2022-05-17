@@ -31,14 +31,11 @@ func (r Resource) compareVersion(otherVersion string) int {
 func (r Resource) Type() ResourceType {
 	value, ok := r["type"]
 	if !ok {
-		// try to guess the resource type for <= 1.0.0-beta.2
-		if r.compareVersion("1.0.0-beta.2") <= 0 {
-			if _, ok := r["extent"]; ok {
-				return Collection
-			}
-			if _, ok := r["id"]; ok {
-				return Catalog
-			}
+		if _, ok := r["extent"]; ok {
+			return Collection
+		}
+		if _, ok := r["id"]; ok {
+			return Catalog
 		}
 		return ""
 	}
