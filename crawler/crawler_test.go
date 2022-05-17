@@ -197,6 +197,37 @@ func TestCrawlerSingle(t *testing.T) {
 	assert.Equal(t, uint64(1), count)
 }
 
+func TestCrawlerCollection081(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, resource)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	c := crawler.New(visitor, &crawler.Options{Recursion: crawler.None})
+
+	err := c.Crawl(context.Background(), "testdata/v0.8.1/5633320870809797824_root_collection.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(1), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	value, ok := visited.Load(filepath.Join(wd, "testdata/v0.8.1/5633320870809797824_root_collection.json"))
+	require.True(t, ok)
+
+	resource, ok := value.(crawler.Resource)
+	require.True(t, ok)
+
+	assert.Equal(t, resource.Type(), crawler.Collection)
+}
+
 func TestCrawlerChildren(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
