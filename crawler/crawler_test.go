@@ -261,6 +261,99 @@ func TestCrawlerCatalog(t *testing.T) {
 	assert.Equal(t, uint64(1), count)
 }
 
+func TestCrawlerInvalidJSON(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	entry := "testdata/v1.0.0/invalid-json.txt"
+
+	err := crawler.Crawl(entry, visitor)
+	require.Error(t, err)
+	assert.True(t, strings.HasPrefix(err.Error(), "failed to parse"))
+	assert.Equal(t, uint64(0), count)
+}
+
+func TestCrawlerCatalogWithBadCollection(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	entry := "testdata/v1.0.0/catalog-with-one-invalid-collection.json"
+
+	err := crawler.Crawl(entry, visitor)
+	require.Error(t, err)
+	assert.True(t, strings.HasPrefix(err.Error(), "failed to parse"))
+
+	assert.Equal(t, uint64(2), count)
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
+	assert.True(t, visitedCatalog)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
+	assert.True(t, visitedCollection)
+}
+
+func TestCrawlerErrorHandler(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+	lock := &sync.Mutex{}
+	errors := []error{}
+
+	errorHandler := func(err error) error {
+		lock.Lock()
+		errors = append(errors, err)
+		lock.Unlock()
+		return nil
+	}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	entry := "testdata/v1.0.0/catalog-with-one-invalid-collection.json"
+
+	err := crawler.Crawl(entry, visitor, &crawler.Options{ErrorHandler: errorHandler})
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(3), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
+	assert.True(t, visitedCatalog)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
+	assert.True(t, visitedCollection)
+
+	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
+	assert.True(t, visitedItem)
+
+	require.Len(t, errors, 1)
+	assert.True(t, strings.HasPrefix(errors[0].Error(), "failed to parse"))
+}
+
 func TestCrawlerAPI(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
