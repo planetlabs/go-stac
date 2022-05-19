@@ -38,6 +38,20 @@ const (
 	Children RecursionType = "children"
 )
 
+func load(entry *normurl.Locator, loc *normurl.Locator, value interface{}) error {
+	if loc.IsFilepath() {
+		if !entry.IsFilepath() {
+			return fmt.Errorf("cannot crawl file %s in non-file mode", loc)
+		}
+		return loadFile(loc, value)
+	}
+
+	if entry.IsFilepath() {
+		return fmt.Errorf("cannot crawl URL %s in file mode", loc)
+	}
+	return loadUrl(loc, value)
+}
+
 func loadFile(loc *normurl.Locator, value any) error {
 	data, readErr := ioutil.ReadFile(loc.String())
 	if readErr != nil {
@@ -97,16 +111,28 @@ func tryLoadUrl(loc *normurl.Locator, value any) error {
 // Any returned error will stop crawling and be returned by Crawl.
 type Visitor func(string, Resource) error
 
+// ErrorHandler is called with any errors during a crawl.  If the function
+// returns nil, the crawl will continue.  If the function returns an error,
+// the crawl will stop.
+type ErrorHandler func(error) error
+
+func wrapErrorHandler(handler ErrorHandler) ErrorHandler {
+	return func(err error) error {
+		if err == nil {
+			return nil
+		}
+		return handler(err)
+	}
+}
+
 // crawler crawls STAC resources.
 type crawler struct {
-	ctx         context.Context
-	entry       *normurl.Locator
-	visitor     Visitor
-	worker      *workgroup.Worker[*Task]
-	recursion   RecursionType
-	concurrency int
-	filter      func(string) bool
-	queue       workgroup.Queue[*Task]
+	entry        *normurl.Locator
+	visitor      Visitor
+	worker       *workgroup.Worker[*Task]
+	recursion    RecursionType
+	filter       func(string) bool
+	errorHandler ErrorHandler
 }
 
 // Options for creating a crawler.
@@ -127,35 +153,48 @@ type Options struct {
 	// not be called.
 	Filter func(string) bool
 
+	// Optional function to handle any errors during the crawl.  By default, any error
+	// will stop the crawl.  To continue crawling on error, provide a function that
+	// returns nil.
+	ErrorHandler ErrorHandler
+
 	// Optional queue to use for crawling tasks.  If not provided, an in-memory queue
 	// will be used.  When running a crawl across multiple processes, it can be useful
 	// to provide a queue that is shared across processes.
 	Queue workgroup.Queue[*Task]
 }
 
-func (c *crawler) apply(options *Options) {
-	if options.Context != nil {
-		c.ctx = options.Context
+func applyOptions(options []*Options) *Options {
+	o := &Options{}
+	for _, option := range options {
+		if option.Context != nil {
+			o.Context = option.Context
+		}
+		if option.Concurrency > 0 {
+			o.Concurrency = option.Concurrency
+		}
+		if option.Recursion != "" {
+			o.Recursion = option.Recursion
+		}
+		if option.Queue != nil {
+			o.Queue = option.Queue
+		}
+		if option.Filter != nil {
+			o.Filter = option.Filter
+		}
+		if option.ErrorHandler != nil {
+			o.ErrorHandler = option.ErrorHandler
+		}
 	}
-	if options.Concurrency > 0 {
-		c.concurrency = options.Concurrency
-	}
-	if options.Recursion != "" {
-		c.recursion = options.Recursion
-	}
-	if options.Queue != nil {
-		c.queue = options.Queue
-	}
-	if options.Filter != nil {
-		c.filter = options.Filter
-	}
+	return o
 }
 
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
-	Context:     context.Background(),
-	Recursion:   Children,
-	Concurrency: runtime.GOMAXPROCS(0),
+	Context:      context.Background(),
+	Recursion:    Children,
+	Concurrency:  runtime.GOMAXPROCS(0),
+	ErrorHandler: func(err error) error { return err },
 }
 
 // Crawl calls the visitor for each resolved resource.
@@ -168,10 +207,12 @@ func Crawl(resource string, visitor Visitor, options ...*Options) error {
 	if err != nil {
 		return err
 	}
+
 	addErr := c.worker.Add(&Task{Url: c.entry.String(), Type: resourceTask})
 	if addErr != nil {
 		return addErr
 	}
+
 	return c.worker.Wait()
 }
 
@@ -198,6 +239,7 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 	if wdErr != nil {
 		return nil, fmt.Errorf("failed to get working directory: %w", wdErr)
 	}
+
 	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
 	if baseErr != nil {
 		return nil, fmt.Errorf("failed to parse working directory: %w", baseErr)
@@ -208,21 +250,21 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 		return nil, locErr
 	}
 
-	c := &crawler{
-		entry:   loc,
-		visitor: visitor,
-	}
+	opt := applyOptions(append([]*Options{DefaultOptions}, options...))
 
-	c.apply(DefaultOptions)
-	for _, opt := range options {
-		c.apply(opt)
+	c := &crawler{
+		entry:        loc,
+		visitor:      visitor,
+		recursion:    opt.Recursion,
+		filter:       opt.Filter,
+		errorHandler: wrapErrorHandler(opt.ErrorHandler),
 	}
 
 	c.worker = workgroup.New(&workgroup.Options[*Task]{
-		Context: c.ctx,
-		Limit:   c.concurrency,
 		Work:    c.crawl,
-		Queue:   c.queue,
+		Context: opt.Context,
+		Limit:   opt.Concurrency,
+		Queue:   opt.Queue,
 	})
 
 	return c, nil
@@ -237,20 +279,6 @@ const (
 type Task struct {
 	Url  string
 	Type string
-}
-
-func (c *crawler) load(loc *normurl.Locator, value interface{}) error {
-	if loc.IsFilepath() {
-		if !c.entry.IsFilepath() {
-			return fmt.Errorf("cannot crawl file %s in non-file mode", loc)
-		}
-		return loadFile(loc, value)
-	}
-
-	if c.entry.IsFilepath() {
-		return fmt.Errorf("cannot crawl URL %s in file mode", loc)
-	}
-	return loadUrl(loc, value)
 }
 
 func (c *crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
@@ -276,13 +304,17 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	}
 
 	resource := Resource{}
-	loadErr := c.load(loc, &resource)
+	loadErr := load(c.entry, loc, &resource)
 	if loadErr != nil {
-		return loadErr
+		return c.errorHandler(loadErr)
+	}
+
+	if err := c.errorHandler(c.visitor(resourceUrl, resource)); err != nil {
+		return err
 	}
 
 	if c.recursion == None {
-		return c.visitor(resourceUrl, resource)
+		return nil
 	}
 
 	links := resource.Links()
@@ -292,13 +324,9 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 		if dataLink != nil {
 			linkLoc, err := loc.Resolve(dataLink["href"])
 			if err != nil {
-				return err
+				return c.errorHandler(err)
 			}
-			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
-			if addErr != nil {
-				return addErr
-			}
-			return c.visitor(resourceUrl, resource)
+			return worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 		}
 	}
 
@@ -308,13 +336,9 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 		if itemsLink != nil {
 			linkLoc, err := loc.Resolve(itemsLink["href"])
 			if err != nil {
-				return err
+				return c.errorHandler(err)
 			}
-			addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
-			if addErr != nil {
-				return addErr
-			}
-			return c.visitor(resourceUrl, resource)
+			return worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 		}
 	}
 
@@ -324,7 +348,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 			if LinkTypeApplicationJSON(link) || LinkTypeAnyJSON(link) || LinkTypeNone(link) {
 				linkLoc, err := loc.Resolve(link["href"])
 				if err != nil {
-					return err
+					return c.errorHandler(err)
 				}
 				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
 				if addErr != nil {
@@ -334,7 +358,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 		}
 	}
 
-	return c.visitor(resourceUrl, resource)
+	return nil
 }
 
 func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
@@ -343,36 +367,36 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		return locErr
 	}
 	response := &featureCollectionsResponse{}
-	loadErr := c.load(loc, response)
+	loadErr := load(c.entry, loc, response)
 	if loadErr != nil {
-		return loadErr
+		return c.errorHandler(loadErr)
 	}
 
 	for i, resource := range response.Collections {
 		if resource.Type() != Collection {
-			return fmt.Errorf("expected collection at index %d, got %s", i, resource.Type())
+			return c.errorHandler(fmt.Errorf("expected collection at index %d, got %s", i, resource.Type()))
 		}
 		links := resource.Links()
 
 		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return fmt.Errorf("missing self link for collection %d in %s", i, collectionsUrl)
+			return c.errorHandler(fmt.Errorf("missing self link for collection %d in %s", i, collectionsUrl))
 		}
 		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
-			return selfLinkErr
+			return c.errorHandler(selfLinkErr)
 		}
-		if err := c.visitor(selfLinkLoc.String(), resource); err != nil {
+		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
 			return err
 		}
 
 		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if itemsLink == nil {
-			return fmt.Errorf("missing items link for collection %d in %s", i, collectionsUrl)
+			return c.errorHandler(fmt.Errorf("missing items link for collection %d in %s", i, collectionsUrl))
 		}
 		itemsLinkLoc, itemsLinkErr := loc.Resolve(itemsLink["href"])
 		if itemsLinkErr != nil {
-			return itemsLinkErr
+			return c.errorHandler(itemsLinkErr)
 		}
 		addErr := worker.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
 		if addErr != nil {
@@ -384,7 +408,7 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 	if nextLink != nil {
 		linkLoc, err := loc.Resolve(nextLink["href"])
 		if err != nil {
-			return err
+			return c.errorHandler(err)
 		}
 		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 		if addErr != nil {
@@ -398,31 +422,31 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
 	loc, locErr := normurl.New(featuresUrl)
 	if locErr != nil {
-		return locErr
+		return c.errorHandler(locErr)
 	}
 
 	response := &featureCollectionResponse{}
-	loadErr := c.load(loc, response)
+	loadErr := load(c.entry, loc, response)
 	if loadErr != nil {
-		return loadErr
+		return c.errorHandler(loadErr)
 	}
 	for i, resource := range response.Features {
 		if resource.Type() != Item {
-			return fmt.Errorf("expected item at index %d, got %s", i, resource.Type())
+			return c.errorHandler(fmt.Errorf("expected item at index %d, got %s", i, resource.Type()))
 		}
 
 		links := resource.Links()
 		selfLink := links.Rel("self", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return fmt.Errorf("missing self link for item %d in %s", i, featuresUrl)
+			return c.errorHandler(fmt.Errorf("missing self link for item %d in %s", i, featuresUrl))
 		}
 
 		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
-			return selfLinkErr
+			return c.errorHandler(selfLinkErr)
 		}
 
-		if err := c.visitor(selfLinkLoc.String(), resource); err != nil {
+		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
 			return err
 		}
 	}
@@ -431,7 +455,7 @@ func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 	if nextLink != nil {
 		linkLoc, err := loc.Resolve(nextLink["href"])
 		if err != nil {
-			return err
+			return c.errorHandler(err)
 		}
 		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 		if addErr != nil {
