@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -92,12 +91,10 @@ var statsCommand = &cli.Command{
 			return nil
 		}
 
-		c := crawler.New(visitor, &crawler.Options{
+		err := crawler.Crawl(entryPath, visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
-
-		err := c.Crawl(context.Background(), entryPath)
 		if err != nil {
 			return err
 		}

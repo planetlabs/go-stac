@@ -97,10 +97,12 @@ func tryLoadUrl(loc *normurl.Locator, value any) error {
 // Any returned error will stop crawling and be returned by Crawl.
 type Visitor func(string, Resource) error
 
-// Crawler crawls STAC resources.
-type Crawler struct {
-	fileMode    bool
+// crawler crawls STAC resources.
+type crawler struct {
+	ctx         context.Context
+	entry       *normurl.Locator
 	visitor     Visitor
+	worker      *workgroup.Worker[*Task]
 	recursion   RecursionType
 	concurrency int
 	filter      func(string) bool
@@ -109,6 +111,9 @@ type Crawler struct {
 
 // Options for creating a crawler.
 type Options struct {
+	// Optional context.  If provided, the crawler will stop when the context is done.
+	Context context.Context
+
 	// Limit to the number of resources to fetch and visit concurrently.
 	Concurrency int
 
@@ -122,10 +127,16 @@ type Options struct {
 	// not be called.
 	Filter func(string) bool
 
+	// Optional queue to use for crawling tasks.  If not provided, an in-memory queue
+	// will be used.  When running a crawl across multiple processes, it can be useful
+	// to provide a queue that is shared across processes.
 	Queue workgroup.Queue[*Task]
 }
 
-func (c *Crawler) apply(options *Options) {
+func (c *crawler) apply(options *Options) {
+	if options.Context != nil {
+		c.ctx = options.Context
+	}
 	if options.Concurrency > 0 {
 		c.concurrency = options.Concurrency
 	}
@@ -142,23 +153,79 @@ func (c *Crawler) apply(options *Options) {
 
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
+	Context:     context.Background(),
 	Recursion:   Children,
 	Concurrency: runtime.GOMAXPROCS(0),
 }
 
-// New creates a crawler with the provided options (or DefaultOptions
+// Crawl calls the visitor for each resolved resource.
+//
+// The resource can be a file path or a URL.  Any error returned by visitor
+// will stop crawling and be returned by this function.  Context cancellation
+// will also stop crawling and the context error will be returned.
+func Crawl(resource string, visitor Visitor, options ...*Options) error {
+	c, err := newCrawler(resource, visitor, options...)
+	if err != nil {
+		return err
+	}
+	addErr := c.worker.Add(&Task{Url: c.entry.String(), Type: resourceTask})
+	if addErr != nil {
+		return addErr
+	}
+	return c.worker.Wait()
+}
+
+// Join adds a crawler to an existing crawl instead of initiating a new one.
+//
+// This is useful when two crawlers share the same queue and the first crawler
+// has been taken down or the queue is getting too large.  Join will return immediately
+// if the queue of tasks is empty.
+func Join(resource string, visitor Visitor, options ...*Options) error {
+	c, err := newCrawler(resource, visitor, options...)
+	if err != nil {
+		return err
+	}
+
+	return c.worker.Wait()
+}
+
+// newCrawler creates a crawler with the provided options (or DefaultOptions
 // if none are provided).
 //
 // The visitor will be called for each resource resolved.
-func New(visitor Visitor, options ...*Options) *Crawler {
-	c := &Crawler{
+func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler, error) {
+	wd, wdErr := os.Getwd()
+	if wdErr != nil {
+		return nil, fmt.Errorf("failed to get working directory: %w", wdErr)
+	}
+	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
+	if baseErr != nil {
+		return nil, fmt.Errorf("failed to parse working directory: %w", baseErr)
+	}
+
+	loc, locErr := base.Resolve(resource)
+	if locErr != nil {
+		return nil, locErr
+	}
+
+	c := &crawler{
+		entry:   loc,
 		visitor: visitor,
 	}
+
 	c.apply(DefaultOptions)
 	for _, opt := range options {
 		c.apply(opt)
 	}
-	return c
+
+	c.worker = workgroup.New(&workgroup.Options[*Task]{
+		Context: c.ctx,
+		Limit:   c.concurrency,
+		Work:    c.crawl,
+		Queue:   c.queue,
+	})
+
+	return c, nil
 }
 
 const (
@@ -172,54 +239,21 @@ type Task struct {
 	Type string
 }
 
-// Crawl calls the visitor for each resolved resource.
-//
-// The resource can be a file path or a URL.  Any error returned by visitor
-// will stop crawling and be returned by this function.  Context cancellation
-// will also stop crawling and the context error will be returned.
-func (c *Crawler) Crawl(ctx context.Context, resource string) error {
-	wd, wdErr := os.Getwd()
-	if wdErr != nil {
-		return fmt.Errorf("failed to get working directory: %w", wdErr)
-	}
-	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
-	if baseErr != nil {
-		return fmt.Errorf("failed to parse working directory: %w", baseErr)
-	}
-
-	loc, locErr := base.Resolve(resource)
-	if locErr != nil {
-		return locErr
-	}
-	c.fileMode = loc.IsFilepath()
-	worker := workgroup.New(&workgroup.Options[*Task]{
-		Context: ctx,
-		Limit:   c.concurrency,
-		Work:    c.crawl,
-		Queue:   c.queue,
-	})
-	addErr := worker.Add(&Task{Url: loc.String(), Type: resourceTask})
-	if addErr != nil {
-		return addErr
-	}
-	return worker.Wait()
-}
-
-func (c *Crawler) load(loc *normurl.Locator, value interface{}) error {
+func (c *crawler) load(loc *normurl.Locator, value interface{}) error {
 	if loc.IsFilepath() {
-		if !c.fileMode {
+		if !c.entry.IsFilepath() {
 			return fmt.Errorf("cannot crawl file %s in non-file mode", loc)
 		}
 		return loadFile(loc, value)
 	}
 
-	if c.fileMode {
+	if c.entry.IsFilepath() {
 		return fmt.Errorf("cannot crawl URL %s in file mode", loc)
 	}
 	return loadUrl(loc, value)
 }
 
-func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
+func (c *crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 	if c.filter != nil && !c.filter(t.Url) {
 		return nil
 	}
@@ -235,7 +269,7 @@ func (c *Crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 	}
 }
 
-func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
+func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
 	loc, locErr := normurl.New(resourceUrl)
 	if locErr != nil {
 		return locErr
@@ -303,7 +337,7 @@ func (c *Crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	return c.visitor(resourceUrl, resource)
 }
 
-func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
+func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
 	loc, locErr := normurl.New(collectionsUrl)
 	if locErr != nil {
 		return locErr
@@ -361,7 +395,7 @@ func (c *Crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 	return nil
 }
 
-func (c *Crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
+func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
 	loc, locErr := normurl.New(featuresUrl)
 	if locErr != nil {
 		return locErr

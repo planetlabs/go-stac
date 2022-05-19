@@ -157,11 +157,11 @@ func schemaUrl(version string, resourceType crawler.ResourceType) string {
 // returned.  Context cancellation will also stop validation and the context
 // error will be returned.
 func (v *Validator) Validate(ctx context.Context, resource string) error {
-	c := crawler.New(v.validate, &crawler.Options{
+	return crawler.Crawl(resource, v.validate, &crawler.Options{
+		Context:     ctx,
 		Concurrency: v.concurrency,
 		Recursion:   v.recursion,
 	})
-	return c.Crawl(ctx, resource)
 }
 
 func (v *Validator) validate(resourceUrl string, resource crawler.Resource) error {

@@ -1,7 +1,6 @@
 package crawler_test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,9 +28,8 @@ func TestCrawler(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
 
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
+	err := crawler.Crawl("testdata/v1.0.0/catalog-with-collection-of-items.json", visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(3), count)
@@ -61,13 +59,13 @@ func TestCrawlerFilterItem(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor, &crawler.Options{
+	entry := "testdata/v1.0.0/catalog-with-collection-of-items.json"
+
+	err := crawler.Crawl(entry, visitor, &crawler.Options{
 		Filter: func(location string) bool {
 			return !strings.HasSuffix(location, "/item-in-collection.json")
 		},
 	})
-
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(2), count)
@@ -75,7 +73,7 @@ func TestCrawlerFilterItem(t *testing.T) {
 	wd, wdErr := os.Getwd()
 	require.NoError(t, wdErr)
 
-	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
 	assert.True(t, visitedCatalog)
 
 	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
@@ -94,13 +92,13 @@ func TestCrawlerFilterCollection(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor, &crawler.Options{
+	entry := "testdata/v1.0.0/catalog-with-collection-of-items.json"
+
+	err := crawler.Crawl(entry, visitor, &crawler.Options{
 		Filter: func(location string) bool {
 			return !strings.HasSuffix(location, "/collection-with-items.json")
 		},
 	})
-
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -108,7 +106,7 @@ func TestCrawlerFilterCollection(t *testing.T) {
 	wd, wdErr := os.Getwd()
 	require.NoError(t, wdErr)
 
-	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
 	assert.True(t, visitedCatalog)
 }
 
@@ -127,14 +125,14 @@ func TestCrawlerHTTP(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
+	entry := server.URL + "/v1.0.0/catalog-with-collection-of-items.json"
 
-	err := c.Crawl(context.Background(), server.URL+"/v1.0.0/catalog-with-collection-of-items.json")
+	err := crawler.Crawl(entry, visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(3), count)
 
-	_, visitedCatalog := visited.Load(server.URL + "/v1.0.0/catalog-with-collection-of-items.json")
+	_, visitedCatalog := visited.Load(entry)
 	assert.True(t, visitedCatalog)
 
 	_, visitedCollection := visited.Load(server.URL + "/v1.0.0/collection-with-items.json")
@@ -167,9 +165,8 @@ func TestCrawlerHTTPRetry(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
 
-	err := c.Crawl(context.Background(), server.URL+"/not-found")
+	err := crawler.Crawl(server.URL+"/not-found", visitor)
 	require.Error(t, err)
 
 	assert.True(t, strings.HasPrefix(err.Error(), "unexpected response"))
@@ -189,9 +186,9 @@ func TestCrawlerSingle(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor, &crawler.Options{Recursion: crawler.None})
+	entry := "testdata/v1.0.0/catalog-with-collection-of-items.json"
 
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog-with-collection-of-items.json")
+	err := crawler.Crawl(entry, visitor, &crawler.Options{Recursion: crawler.None})
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -209,9 +206,9 @@ func TestCrawlerCollection081(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor, &crawler.Options{Recursion: crawler.None})
+	entry := "testdata/v0.8.1/5633320870809797824_root_collection.json"
 
-	err := c.Crawl(context.Background(), "testdata/v0.8.1/5633320870809797824_root_collection.json")
+	err := crawler.Crawl(entry, visitor, &crawler.Options{Recursion: crawler.None})
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -219,7 +216,7 @@ func TestCrawlerCollection081(t *testing.T) {
 	wd, wdErr := os.Getwd()
 	require.NoError(t, wdErr)
 
-	value, ok := visited.Load(filepath.Join(wd, "testdata/v0.8.1/5633320870809797824_root_collection.json"))
+	value, ok := visited.Load(filepath.Join(wd, entry))
 	require.True(t, ok)
 
 	resource, ok := value.(crawler.Resource)
@@ -240,9 +237,7 @@ func TestCrawlerChildren(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor, &crawler.Options{Recursion: crawler.Children})
-
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/collection-with-items.json")
+	err := crawler.Crawl("testdata/v1.0.0/collection-with-items.json", visitor, &crawler.Options{Recursion: crawler.Children})
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(2), count)
@@ -260,9 +255,7 @@ func TestCrawlerCatalog(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
-
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/catalog.json")
+	err := crawler.Crawl("testdata/v1.0.0/catalog.json", visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -280,9 +273,9 @@ func TestCrawlerAPI(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
+	entry := "testdata/v1.0.0/api-catalog.json"
 
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/api-catalog.json")
+	err := crawler.Crawl(entry, visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(3), count)
@@ -290,7 +283,7 @@ func TestCrawlerAPI(t *testing.T) {
 	wd, wdErr := os.Getwd()
 	require.NoError(t, wdErr)
 
-	_, visitedCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/api-catalog.json"))
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
 	assert.True(t, visitedCatalog)
 
 	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
@@ -312,9 +305,9 @@ func TestCrawlerAPICollection(t *testing.T) {
 		}
 		return nil
 	}
-	c := crawler.New(visitor)
+	entry := "testdata/v1.0.0/api-collection.json"
 
-	err := c.Crawl(context.Background(), "testdata/v1.0.0/api-collection.json")
+	err := crawler.Crawl(entry, visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(2), count)
@@ -322,7 +315,7 @@ func TestCrawlerAPICollection(t *testing.T) {
 	wd, wdErr := os.Getwd()
 	require.NoError(t, wdErr)
 
-	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/api-collection.json"))
+	_, visitedCollection := visited.Load(filepath.Join(wd, entry))
 	assert.True(t, visitedCollection)
 
 	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))

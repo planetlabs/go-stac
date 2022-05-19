@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -182,11 +181,9 @@ var formatCommand = &cli.Command{
 			return nil
 		}
 
-		c := crawler.New(visitor, &crawler.Options{
+		return crawler.Crawl(entryPath, visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
 			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
-
-		return c.Crawl(context.Background(), entryPath)
 	},
 }
