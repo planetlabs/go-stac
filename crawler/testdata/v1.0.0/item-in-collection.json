@@ -2,10 +2,18 @@
   "stac_version": "1.0.0",
   "type": "Feature",
   "id": "item-in-collection",
-  "bbox": [0, 0, 0, 0],
+  "bbox": [
+    0,
+    0,
+    0,
+    0
+  ],
   "geometry": {
     "type": "Point",
-    "coordinates": [0, 0]
+    "coordinates": [
+      0,
+      0
+    ]
   },
   "properties": {
     "datetime": "2022-03-22T00:00:00Z"
@@ -24,5 +32,26 @@
       "href": "./catalog-with-collection-of-items.json"
     }
   ],
-  "assets": {}
+  "assets": {
+    "visual": {
+      "href": "https://storage.googleapis.com/open-cogs/stac-examples/20201211_223832_CS2.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "3-Band Visual",
+      "description": "A visual of the item in the collection",
+      "roles": [
+        "visual"
+      ]
+    },
+    "thumbnail": {
+      "href": "https://storage.googleapis.com/open-cogs/stac-examples/20201211_223832_CS2.jpg",
+      "title": "Thumbnail",
+      "type": "image/jpeg",
+      "roles": [
+        "thumbnail"
+      ]
+    },
+    "minimal": {
+      "href": "https://example.com/minimal"
+    }
+  }
 }
