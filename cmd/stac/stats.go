@@ -18,6 +18,7 @@ type Stats struct {
 	Collections uint64            `json:"collections"`
 	Items       uint64            `json:"items"`
 	Extensions  map[string]uint64 `json:"extensions"`
+	Conformance map[string]uint64 `json:"conformance"`
 }
 
 var statsCommand = &cli.Command{
@@ -85,8 +86,11 @@ var statsCommand = &cli.Command{
 			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", stats.Catalogs, stats.Collections, stats.Items))
 
 			for _, extension := range resource.Extensions() {
-				count := stats.Extensions[extension]
-				stats.Extensions[extension] = count + 1
+				stats.Extensions[extension] += 1
+			}
+
+			for _, conformance := range resource.ConformsTo() {
+				stats.Conformance[conformance] += 1
 			}
 			return nil
 		}
