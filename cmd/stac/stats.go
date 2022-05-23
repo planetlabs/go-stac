@@ -17,6 +17,7 @@ type Stats struct {
 	Catalogs    uint64            `json:"catalogs"`
 	Collections uint64            `json:"collections"`
 	Items       uint64            `json:"items"`
+	Assets      map[string]uint64 `json:"assets"`
 	Extensions  map[string]uint64 `json:"extensions"`
 	Conformance map[string]uint64 `json:"conformance"`
 }
@@ -54,7 +55,11 @@ var statsCommand = &cli.Command{
 		}
 
 		mutext := &sync.Mutex{}
-		stats := &Stats{Extensions: map[string]uint64{}}
+		stats := &Stats{
+			Assets:      map[string]uint64{},
+			Extensions:  map[string]uint64{},
+			Conformance: map[string]uint64{},
+		}
 
 		bar := progressbar.NewOptions64(
 			-1,
@@ -84,6 +89,12 @@ var statsCommand = &cli.Command{
 
 			_ = bar.Add(1)
 			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", stats.Catalogs, stats.Collections, stats.Items))
+
+			if resource.Type() == crawler.Item {
+				for _, asset := range resource.Assets() {
+					stats.Assets[asset.Type()] += 1
+				}
+			}
 
 			for _, extension := range resource.Extensions() {
 				stats.Extensions[extension] += 1
