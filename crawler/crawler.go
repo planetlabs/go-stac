@@ -273,6 +273,7 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 const (
 	resourceTask    = "resource"
 	collectionsTask = "collections"
+	childrenTask    = "children"
 	featuresTask    = "features"
 )
 
@@ -290,6 +291,8 @@ func (c *crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
 		return c.crawlResource(worker, t.Url)
 	case collectionsTask:
 		return c.crawlCollections(worker, t.Url)
+	case childrenTask:
+		return c.crawlChildren(worker, t.Url)
 	case featuresTask:
 		return c.crawlFeatures(worker, t.Url)
 	default:
@@ -327,6 +330,18 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 				return c.errorHandler(err)
 			}
 			return worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+		}
+	}
+
+	// check if this looks like a STAC API root catalog that implements STAC API - Children
+	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
+		childrenLink := links.Rel("children", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if childrenLink != nil {
+			linkLoc, err := loc.Resolve(childrenLink["href"])
+			if err != nil {
+				return c.errorHandler(err)
+			}
+			return worker.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
 		}
 	}
 
@@ -411,6 +426,52 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 			return c.errorHandler(err)
 		}
 		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+		if addErr != nil {
+			return addErr
+		}
+	}
+
+	return nil
+}
+
+func (c *crawler) crawlChildren(worker *workgroup.Worker[*Task], childrenUrl string) error {
+	loc, locErr := normurl.New(childrenUrl)
+	if locErr != nil {
+		return locErr
+	}
+	response := &childrenResponse{}
+	loadErr := load(c.entry, loc, response)
+	if loadErr != nil {
+		return c.errorHandler(loadErr)
+	}
+
+	for i, resource := range response.Children {
+		if resource.Type() != Catalog && resource.Type() != Collection {
+			return c.errorHandler(fmt.Errorf("expected catalog or collection at index %d, got %s", i, resource.Type()))
+		}
+		links := resource.Links()
+
+		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+		if selfLink == nil {
+			return c.errorHandler(fmt.Errorf("missing self link for %s %d in %s", resource.Type(), i, childrenUrl))
+		}
+		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		if selfLinkErr != nil {
+			return c.errorHandler(selfLinkErr)
+		}
+		addErr := worker.Add(&Task{Url: selfLinkLoc.String(), Type: resourceTask})
+		if addErr != nil {
+			return addErr
+		}
+	}
+
+	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
+	if nextLink != nil {
+		linkLoc, err := loc.Resolve(nextLink["href"])
+		if err != nil {
+			return c.errorHandler(err)
+		}
+		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
 		if addErr != nil {
 			return addErr
 		}

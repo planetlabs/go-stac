@@ -414,3 +414,41 @@ func TestCrawlerAPICollection(t *testing.T) {
 	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
 	assert.True(t, visitedItem)
 }
+
+func TestCrawlerAPIChildren(t *testing.T) {
+	count := uint64(0)
+	visited := &sync.Map{}
+
+	visitor := func(location string, resource crawler.Resource) error {
+		atomic.AddUint64(&count, 1)
+		_, loaded := visited.LoadOrStore(location, true)
+		if loaded {
+			return fmt.Errorf("already visited %s", location)
+		}
+		return nil
+	}
+	entry := "testdata/v1.0.0/api-catalog-with-children.json"
+
+	err := crawler.Crawl(entry, visitor)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(5), count)
+
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+
+	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
+	assert.True(t, visitedCatalog)
+
+	_, visitedOneCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog.json"))
+	assert.True(t, visitedOneCatalog)
+
+	_, visitedOtherCatalog := visited.Load(filepath.Join(wd, "testdata/v1.0.0/catalog-with-collection-of-items.json"))
+	assert.True(t, visitedOtherCatalog)
+
+	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
+	assert.True(t, visitedCollection)
+
+	_, visitedItem := visited.Load(filepath.Join(wd, "testdata/v1.0.0/item-in-collection.json"))
+	assert.True(t, visitedItem)
+}

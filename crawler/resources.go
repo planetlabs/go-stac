@@ -159,3 +159,8 @@ type featureCollectionResponse struct {
 	Features []Resource `json:"features"`
 	Links    Links      `json:"links"`
 }
+
+type childrenResponse struct {
+	Children []Resource `json:"children"`
+	Links    Links      `json:"links"`
+}

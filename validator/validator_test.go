@@ -83,38 +83,22 @@ func (s *Suite) TestSchemaMap() {
 	s.Assert().NoError(err)
 }
 
-func TestSuite(t *testing.T) {
-	suite.Run(t, &Suite{})
-}
-
-func ExampleValidator_Validate_children() {
+func (s *Suite) TestCatalogWithInvalidItem() {
 	v := validator.New()
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/catalog-with-item-missing-id.json")
-
-	workdir, _ := os.Getwd()
-	fmt.Println(strings.Replace(fmt.Sprintf("%#v\n", err), workdir, "/path/to", 1))
-	// Output:
-	// invalid item: /path/to/testdata/cases/v1.0.0/item-missing-id.json
-	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
-	//   [I#] [S#/allOf/0] allOf failed
-	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
-	//       [I#] [S#/definitions/core/allOf/2] allOf failed
-	//         [I#] [S#/definitions/core/allOf/2/required] missing properties: 'id'
+	s.Require().Error(err)
+	s.Assert().True(strings.HasSuffix(fmt.Sprintf("%#v", err), "missing properties: 'id'"))
 }
 
-func ExampleValidator_Validate_single() {
+func (s *Suite) TestInvalidItem() {
 	v := validator.New()
 
 	err := v.Validate(context.Background(), "testdata/cases/v1.0.0/item-missing-id.json")
+	s.Require().Error(err)
+	s.Assert().True(strings.HasSuffix(fmt.Sprintf("%#v", err), "missing properties: 'id'"))
+}
 
-	workdir, _ := os.Getwd()
-	fmt.Println(strings.Replace(fmt.Sprintf("%#v\n", err), workdir, "/path/to", 1))
-	// Output:
-	// invalid item: /path/to/testdata/cases/v1.0.0/item-missing-id.json
-	// [I#] [S#] doesn't validate with https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json#
-	//   [I#] [S#/allOf/0] allOf failed
-	//     [I#] [S#/allOf/0/$ref] doesn't validate with '/definitions/core'
-	//       [I#] [S#/definitions/core/allOf/2] allOf failed
-	//         [I#] [S#/definitions/core/allOf/2/required] missing properties: 'id'
+func TestSuite(t *testing.T) {
+	suite.Run(t, &Suite{})
 }

@@ -1,0 +1,62 @@
+{
+  "children": [
+    {
+      "stac_version": "1.0.0",
+      "stac_extensions": [],
+      "id": "one-catalog",
+      "type": "Catalog",
+      "links": [
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "./api-catalog-with-children.json"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "./api-catalog-with-children.json"
+        },
+        {
+          "rel": "self",
+          "type": "application/json",
+          "href": "./catalog-with-collection-of-items.json"
+        }
+      ]
+    },
+    {
+      "stac_version": "1.0.0",
+      "stac_extensions": [],
+      "id": "another-catalog",
+      "type": "Catalog",
+      "links": [
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "./api-catalog-with-children.json"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "./api-catalog-with-children.json"
+        },
+        {
+          "rel": "self",
+          "type": "application/json",
+          "href": "./catalog.json"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "rel": "root",
+      "type": "application/json",
+      "href": "https://stac-api.example.com"
+    },
+    {
+      "rel": "self",
+      "type": "application/json",
+      "href": "https://stac-api.example.com/children"
+    }
+  ]
+}
