@@ -17,6 +17,19 @@ func (l *Locator) String() string {
 	return l.url.String()
 }
 
+func (l *Locator) SetQueryParam(param string, value string) {
+	if l.isFilepath {
+		return
+	}
+	query := l.url.Query()
+	if value != "" {
+		query.Set(param, value)
+	} else {
+		query.Del(param)
+	}
+	l.url.RawQuery = query.Encode()
+}
+
 func (l *Locator) IsFilepath() bool {
 	return l.isFilepath
 }
