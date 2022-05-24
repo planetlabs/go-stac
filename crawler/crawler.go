@@ -353,6 +353,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 			if err != nil {
 				return c.errorHandler(err)
 			}
+			linkLoc.SetQueryParam("limit", "250")
 			return worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 		}
 	}
@@ -413,6 +414,7 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		if itemsLinkErr != nil {
 			return c.errorHandler(itemsLinkErr)
 		}
+		itemsLinkLoc.SetQueryParam("limit", "250")
 		addErr := worker.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
 		if addErr != nil {
 			return addErr
