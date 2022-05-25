@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -93,8 +94,12 @@ func tryLoadUrl(loc *normurl.Locator, value any) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
 		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected response for %s: %d", loc, resp.StatusCode)
 	}
 
