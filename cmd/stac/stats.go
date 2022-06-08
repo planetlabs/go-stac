@@ -14,12 +14,17 @@ import (
 )
 
 type Stats struct {
-	Catalogs    uint64            `json:"catalogs"`
-	Collections uint64            `json:"collections"`
-	Items       uint64            `json:"items"`
-	Assets      map[string]uint64 `json:"assets"`
-	Extensions  map[string]uint64 `json:"extensions"`
-	Conformance map[string]uint64 `json:"conformance"`
+	Catalogs    *ResourceStats `json:"catalogs,omitempty"`
+	Collections *ResourceStats `json:"collections,omitempty"`
+	Items       *ResourceStats `json:"items,omitempty"`
+}
+
+type ResourceStats struct {
+	Count       uint64            `json:"count"`
+	Versions    map[string]uint64 `json:"versions,omitempty"`
+	Extensions  map[string]uint64 `json:"extensions,omitempty"`
+	Conformance map[string]uint64 `json:"conformance,omitempty"`
+	Assets      map[string]uint64 `json:"assets,omitempty"`
 }
 
 var statsCommand = &cli.Command{
@@ -31,6 +36,12 @@ var statsCommand = &cli.Command{
 			Name:    flagEntry,
 			Usage:   "Path to STAC resource (catalog, collection, or item) to crawl",
 			EnvVars: []string{toEnvVar(flagEntry)},
+		},
+		&cli.BoolFlag{
+			Name:    flagExcludeEntry,
+			Usage:   "Do not count the entry itself",
+			Value:   false,
+			EnvVars: []string{toEnvVar(flagExcludeEntry)},
 		},
 		&cli.IntFlag{
 			Name:    flagConcurrency,
@@ -55,11 +66,7 @@ var statsCommand = &cli.Command{
 		}
 
 		mutext := &sync.Mutex{}
-		stats := &Stats{
-			Assets:      map[string]uint64{},
-			Extensions:  map[string]uint64{},
-			Conformance: map[string]uint64{},
-		}
+		stats := &Stats{}
 
 		bar := progressbar.NewOptions64(
 			-1,
@@ -74,35 +81,82 @@ var statsCommand = &cli.Command{
 			progressbar.OptionClearOnFinish(),
 		)
 
+		skip := ctx.Bool(flagExcludeEntry)
 		visitor := func(location string, resource crawler.Resource) error {
+			if skip {
+				skip = false
+				return nil
+			}
+
 			mutext.Lock()
 			defer mutext.Unlock()
 
+			var resourceStats *ResourceStats
+
 			switch resource.Type() {
 			case crawler.Catalog:
-				stats.Catalogs += 1
-			case crawler.Collection:
-				stats.Collections += 1
-			case crawler.Item:
-				stats.Items += 1
-			}
-
-			_ = bar.Add(1)
-			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", stats.Catalogs, stats.Collections, stats.Items))
-
-			if resource.Type() == crawler.Item {
-				for _, asset := range resource.Assets() {
-					stats.Assets[asset.Type()] += 1
+				if stats.Catalogs == nil {
+					stats.Catalogs = &ResourceStats{}
 				}
+				for _, conformance := range resource.ConformsTo() {
+					if stats.Catalogs.Conformance == nil {
+						stats.Catalogs.Conformance = map[string]uint64{}
+					}
+					stats.Catalogs.Conformance[conformance] += 1
+				}
+				resourceStats = stats.Catalogs
+
+			case crawler.Collection:
+				if stats.Collections == nil {
+					stats.Collections = &ResourceStats{}
+				}
+				resourceStats = stats.Collections
+
+			case crawler.Item:
+				if stats.Items == nil {
+					stats.Items = &ResourceStats{}
+				}
+				for _, asset := range resource.Assets() {
+					if stats.Items.Assets == nil {
+						stats.Items.Assets = map[string]uint64{}
+					}
+					stats.Items.Assets[asset.Type()] += 1
+				}
+				resourceStats = stats.Items
 			}
 
 			for _, extension := range resource.Extensions() {
-				stats.Extensions[extension] += 1
+				if resourceStats.Extensions == nil {
+					resourceStats.Extensions = map[string]uint64{}
+				}
+				resourceStats.Extensions[extension] += 1
 			}
 
-			for _, conformance := range resource.ConformsTo() {
-				stats.Conformance[conformance] += 1
+			if resourceStats.Versions == nil {
+				resourceStats.Versions = map[string]uint64{}
 			}
+			resourceStats.Versions[resource.Version()] += 1
+
+			resourceStats.Count += 1
+
+			catalogs := uint64(0)
+			if stats.Catalogs != nil {
+				catalogs = stats.Catalogs.Count
+			}
+
+			collections := uint64(0)
+			if stats.Collections != nil {
+				collections = stats.Collections.Count
+			}
+
+			items := uint64(0)
+			if stats.Items != nil {
+				items = stats.Items.Count
+			}
+
+			_ = bar.Add(1)
+			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", catalogs, collections, items))
+
 			return nil
 		}
 
