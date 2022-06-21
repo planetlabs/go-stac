@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/schollz/progressbar/v3 v3.8.6
-	github.com/stretchr/testify v1.7.3
+	github.com/stretchr/testify v1.7.4
 	github.com/tschaub/retry v1.0.0
 	github.com/tschaub/workgroup v0.4.1
 	github.com/urfave/cli/v2 v2.10.1
