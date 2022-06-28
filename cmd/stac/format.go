@@ -8,7 +8,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/urfave/cli/v2"
@@ -136,14 +135,10 @@ var formatCommand = &cli.Command{
 			Value:   crawler.DefaultOptions.Concurrency,
 			EnvVars: []string{toEnvVar(flagConcurrency)},
 		},
-		&cli.GenericFlag{
-			Name:  flagRecursion,
-			Usage: fmt.Sprintf("Recursion type (%s)", strings.Join(recursionValues, ", ")),
-			Value: &Enum{
-				Values:  recursionValues,
-				Default: string(crawler.DefaultOptions.Recursion),
-			},
-			EnvVars: []string{toEnvVar(flagRecursion)},
+		&cli.BoolFlag{
+			Name:    flagNoRecursion,
+			Usage:   "Visit a single resource",
+			EnvVars: []string{toEnvVar(flagNoRecursion)},
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -157,6 +152,8 @@ var formatCommand = &cli.Command{
 		if outputPath == "" {
 			return fmt.Errorf("missing --%s", flagOutput)
 		}
+
+		noRecursion := ctx.Bool(flagNoRecursion)
 
 		visitor := func(location string, resource crawler.Resource) error {
 			relDir, err := filepath.Rel(baseDir, path.Dir(location))
@@ -178,12 +175,16 @@ var formatCommand = &cli.Command{
 			if err := os.WriteFile(outFile, data, 0644); err != nil {
 				return fmt.Errorf("failed to write %s: %w", outFile, err)
 			}
+
+			if noRecursion {
+				return crawler.ErrStopRecursion
+			}
+
 			return nil
 		}
 
 		return crawler.Crawl(entryPath, visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
-			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
 	},
 }

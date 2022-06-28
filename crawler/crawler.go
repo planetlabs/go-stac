@@ -28,16 +28,8 @@ func init() {
 	httpClient.Logger = nil
 }
 
-// RecursionType informs the crawler how to treat linked resources.
-// None will only call the visitor for the first resource.  Children
-// will call the visitor for all child catalogs, collections, and items.
-// All will call the visitor for parent resources as well as child resources.
-type RecursionType string
-
-const (
-	None     RecursionType = "none"
-	Children RecursionType = "children"
-)
+// ErrStopRecursion is returned by the visitor when it wants to stop recursing.
+var ErrStopRecursion = errors.New("stop recursion")
 
 func load(entry *normurl.Locator, loc *normurl.Locator, value interface{}) error {
 	if loc.IsFilepath() {
@@ -135,7 +127,6 @@ type crawler struct {
 	entry        *normurl.Locator
 	visitor      Visitor
 	worker       *workgroup.Worker[*Task]
-	recursion    RecursionType
 	filter       func(string) bool
 	errorHandler ErrorHandler
 }
@@ -148,10 +139,6 @@ type Options struct {
 	// Limit to the number of resources to fetch and visit concurrently.
 	Concurrency int
 
-	// Strategy to use when crawling linked resources.  Use None to visit
-	// a single resource.  Use Children to only visit linked item/child resources.
-	Recursion RecursionType
-
 	// Optional function to limit which resources to crawl.  If provided, the function
 	// will be called with the URL or absolute path to a resource before it is crawled.
 	// If the function returns false, the resource will not be read and the visitor will
@@ -160,7 +147,8 @@ type Options struct {
 
 	// Optional function to handle any errors during the crawl.  By default, any error
 	// will stop the crawl.  To continue crawling on error, provide a function that
-	// returns nil.
+	// returns nil.  The special ErrStopRecursion will stop the crawler from recursing deeper
+	// but will not stop the crawl altogether.
 	ErrorHandler ErrorHandler
 
 	// Optional queue to use for crawling tasks.  If not provided, an in-memory queue
@@ -178,9 +166,6 @@ func applyOptions(options []*Options) *Options {
 		if option.Concurrency > 0 {
 			o.Concurrency = option.Concurrency
 		}
-		if option.Recursion != "" {
-			o.Recursion = option.Recursion
-		}
 		if option.Queue != nil {
 			o.Queue = option.Queue
 		}
@@ -197,7 +182,6 @@ func applyOptions(options []*Options) *Options {
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
 	Context:      context.Background(),
-	Recursion:    Children,
 	Concurrency:  runtime.GOMAXPROCS(0),
 	ErrorHandler: func(err error) error { return err },
 }
@@ -260,7 +244,6 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 	c := &crawler{
 		entry:        loc,
 		visitor:      visitor,
-		recursion:    opt.Recursion,
 		filter:       opt.Filter,
 		errorHandler: wrapErrorHandler(opt.ErrorHandler),
 	}
@@ -318,11 +301,10 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	}
 
 	if err := c.errorHandler(c.visitor(resourceUrl, resource)); err != nil {
+		if errors.Is(err, ErrStopRecursion) {
+			return nil
+		}
 		return err
-	}
-
-	if c.recursion == None {
-		return nil
 	}
 
 	links := resource.Links()
@@ -408,6 +390,9 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 			return c.errorHandler(selfLinkErr)
 		}
 		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
+			if errors.Is(err, ErrStopRecursion) {
+				continue
+			}
 			return err
 		}
 
@@ -515,6 +500,10 @@ func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 		}
 
 		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
+			if errors.Is(err, ErrStopRecursion) {
+				// this is likely user error, may want to return the error here
+				continue
+			}
 			return err
 		}
 	}

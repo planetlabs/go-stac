@@ -184,11 +184,11 @@ func TestCrawlerSingle(t *testing.T) {
 		if loaded {
 			return fmt.Errorf("already visited %s", location)
 		}
-		return nil
+		return crawler.ErrStopRecursion
 	}
 	entry := "testdata/v1.0.0/catalog-with-collection-of-items.json"
 
-	err := crawler.Crawl(entry, visitor, &crawler.Options{Recursion: crawler.None})
+	err := crawler.Crawl(entry, visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -204,11 +204,11 @@ func TestCrawlerCollection081(t *testing.T) {
 		if loaded {
 			return fmt.Errorf("already visited %s", location)
 		}
-		return nil
+		return crawler.ErrStopRecursion
 	}
 	entry := "testdata/v0.8.1/5633320870809797824_root_collection.json"
 
-	err := crawler.Crawl(entry, visitor, &crawler.Options{Recursion: crawler.None})
+	err := crawler.Crawl(entry, visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(1), count)
@@ -237,7 +237,7 @@ func TestCrawlerChildren(t *testing.T) {
 		}
 		return nil
 	}
-	err := crawler.Crawl("testdata/v1.0.0/collection-with-items.json", visitor, &crawler.Options{Recursion: crawler.Children})
+	err := crawler.Crawl("testdata/v1.0.0/collection-with-items.json", visitor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint64(2), count)

@@ -31,7 +31,7 @@ const (
 	flagEntry       = "entry"
 	flagOutput      = "output"
 	flagConcurrency = "concurrency"
-	flagRecursion   = "recursion"
+	flagNoRecursion = "no-recursion"
 )
 
 type Enum struct {
