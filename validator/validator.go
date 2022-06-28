@@ -100,11 +100,10 @@ func (v *Validator) apply(options *Options) {
 // New creates a new Validator.
 func New(options ...*Options) *Validator {
 	v := &Validator{
-		concurrency: crawler.DefaultOptions.Concurrency,
-		group:       &singleflight.Group{},
-		cache:       &sync.Map{},
-		compiler:    jsonschema.NewCompiler(),
-		logger:      funcr.New(func(prefix string, args string) {}, funcr.Options{}),
+		group:    &singleflight.Group{},
+		cache:    &sync.Map{},
+		compiler: jsonschema.NewCompiler(),
+		logger:   funcr.New(func(prefix string, args string) {}, funcr.Options{}),
 	}
 	for _, opt := range options {
 		v.apply(opt)
@@ -155,8 +154,7 @@ func schemaUrl(version string, resourceType crawler.ResourceType) string {
 // error will be returned.
 func (v *Validator) Validate(ctx context.Context, resource string) error {
 	return crawler.Crawl(resource, v.validate, &crawler.Options{
-		Context:     ctx,
-		Concurrency: v.concurrency,
+		Context: ctx,
 	})
 }
 

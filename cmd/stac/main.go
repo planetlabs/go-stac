@@ -30,7 +30,6 @@ const (
 	flagLogLevel    = "log-level"
 	flagEntry       = "entry"
 	flagOutput      = "output"
-	flagConcurrency = "concurrency"
 	flagNoRecursion = "no-recursion"
 )
 

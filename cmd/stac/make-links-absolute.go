@@ -32,12 +32,6 @@ var absoluteLinksCommand = &cli.Command{
 			Usage:   "Path to a directory for writing updated STAC metadata",
 			EnvVars: []string{toEnvVar(flagOutput)},
 		},
-		&cli.IntFlag{
-			Name:    flagConcurrency,
-			Usage:   "Concurrency limit",
-			Value:   crawler.DefaultOptions.Concurrency,
-			EnvVars: []string{toEnvVar(flagConcurrency)},
-		},
 		&cli.BoolFlag{
 			Name:    flagNoRecursion,
 			Usage:   "Visit a single resource",
@@ -107,9 +101,7 @@ var absoluteLinksCommand = &cli.Command{
 			return nil
 		}
 
-		return crawler.Crawl(entryPath, visitor, &crawler.Options{
-			Concurrency: ctx.Int(flagConcurrency),
-		})
+		return crawler.Crawl(entryPath, visitor)
 	},
 }
 

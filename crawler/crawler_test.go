@@ -298,16 +298,6 @@ func TestCrawlerCatalogWithBadCollection(t *testing.T) {
 	err := crawler.Crawl(entry, visitor)
 	require.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "failed to parse"))
-
-	assert.Equal(t, uint64(2), count)
-	wd, wdErr := os.Getwd()
-	require.NoError(t, wdErr)
-
-	_, visitedCatalog := visited.Load(filepath.Join(wd, entry))
-	assert.True(t, visitedCatalog)
-
-	_, visitedCollection := visited.Load(filepath.Join(wd, "testdata/v1.0.0/collection-with-items.json"))
-	assert.True(t, visitedCollection)
 }
 
 func TestCrawlerErrorHandler(t *testing.T) {

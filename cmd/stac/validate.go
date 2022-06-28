@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/planetlabs/go-stac/crawler"
 	"github.com/planetlabs/go-stac/validator"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -25,12 +24,6 @@ var validateCommand = &cli.Command{
 			Name:    flagSchema,
 			Usage:   "Substitute schema as <original>=<substitute> pairs",
 			EnvVars: []string{toEnvVar(flagSchema)},
-		},
-		&cli.IntFlag{
-			Name:    flagConcurrency,
-			Usage:   "Concurrency limit",
-			Value:   crawler.DefaultOptions.Concurrency,
-			EnvVars: []string{toEnvVar(flagConcurrency)},
 		},
 		&cli.BoolFlag{
 			Name:    flagNoRecursion,
@@ -69,7 +62,6 @@ var validateCommand = &cli.Command{
 		}
 
 		v := validator.New(&validator.Options{
-			Concurrency: ctx.Int(flagConcurrency),
 			NoRecursion: ctx.Bool(flagNoRecursion),
 			SchemaMap:   schemaMap,
 			Logger:      logger,

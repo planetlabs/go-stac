@@ -42,12 +42,6 @@ var statsCommand = &cli.Command{
 			Value:   false,
 			EnvVars: []string{toEnvVar(flagExcludeEntry)},
 		},
-		&cli.IntFlag{
-			Name:    flagConcurrency,
-			Usage:   "Concurrency limit",
-			Value:   crawler.DefaultOptions.Concurrency,
-			EnvVars: []string{toEnvVar(flagConcurrency)},
-		},
 		&cli.BoolFlag{
 			Name:    flagNoRecursion,
 			Usage:   "Visit a single resource",
@@ -161,9 +155,7 @@ var statsCommand = &cli.Command{
 			return nil
 		}
 
-		err := crawler.Crawl(entryPath, visitor, &crawler.Options{
-			Concurrency: ctx.Int(flagConcurrency),
-		})
+		err := crawler.Crawl(entryPath, visitor)
 		if err != nil {
 			return err
 		}
