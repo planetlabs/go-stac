@@ -58,7 +58,7 @@ func (r *ecmaRegexp) String() string {
 // Validator allows validation of STAC resources.
 type Validator struct {
 	concurrency int
-	recursion   crawler.RecursionType
+	noRecursion bool
 	cache       *sync.Map
 	group       *singleflight.Group
 	compiler    *jsonschema.Compiler
@@ -71,10 +71,8 @@ type Options struct {
 	// Limit to the number of resources to fetch and validate concurrently.
 	Concurrency int
 
-	// Type of recursion to use when crawling linked resources.  Use crawler.None to visit
-	// a single resource.  Use crawler.Children to only visit linked item/child resources.
-	// Use crawler.All to visit parent and child resources.
-	Recursion crawler.RecursionType
+	// Set to true to validate a single resource and avoid validating all linked resources.
+	NoRecursion bool
 
 	// A lookup of substitute schema locations.  The key is the original schema location
 	// and the value is the substitute location.
@@ -88,8 +86,8 @@ func (v *Validator) apply(options *Options) {
 	if options.Concurrency != 0 {
 		v.concurrency = options.Concurrency
 	}
-	if options.Recursion != "" {
-		v.recursion = options.Recursion
+	if options.NoRecursion {
+		v.noRecursion = options.NoRecursion
 	}
 	if options.SchemaMap != nil {
 		v.schemaMap = options.SchemaMap
@@ -103,7 +101,6 @@ func (v *Validator) apply(options *Options) {
 func New(options ...*Options) *Validator {
 	v := &Validator{
 		concurrency: crawler.DefaultOptions.Concurrency,
-		recursion:   crawler.DefaultOptions.Recursion,
 		group:       &singleflight.Group{},
 		cache:       &sync.Map{},
 		compiler:    jsonschema.NewCompiler(),
@@ -160,7 +157,6 @@ func (v *Validator) Validate(ctx context.Context, resource string) error {
 	return crawler.Crawl(resource, v.validate, &crawler.Options{
 		Context:     ctx,
 		Concurrency: v.concurrency,
-		Recursion:   v.recursion,
 	})
 }
 
@@ -203,6 +199,10 @@ func (v *Validator) validate(resourceUrl string, resource crawler.Resource) erro
 		if extensionErr != nil {
 			return extensionErr
 		}
+	}
+
+	if v.noRecursion {
+		return crawler.ErrStopRecursion
 	}
 
 	return nil

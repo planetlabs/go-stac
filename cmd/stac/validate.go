@@ -11,8 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var recursionValues = []string{string(crawler.None), string(crawler.Children)}
-
 var validateCommand = &cli.Command{
 	Name:        "validate",
 	Usage:       "Validate STAC metadata",
@@ -34,14 +32,10 @@ var validateCommand = &cli.Command{
 			Value:   crawler.DefaultOptions.Concurrency,
 			EnvVars: []string{toEnvVar(flagConcurrency)},
 		},
-		&cli.GenericFlag{
-			Name:  flagRecursion,
-			Usage: fmt.Sprintf("Recursion type (%s)", strings.Join(recursionValues, ", ")),
-			Value: &Enum{
-				Values:  recursionValues,
-				Default: string(crawler.DefaultOptions.Recursion),
-			},
-			EnvVars: []string{toEnvVar(flagRecursion)},
+		&cli.BoolFlag{
+			Name:    flagNoRecursion,
+			Usage:   "Visit a single resource",
+			EnvVars: []string{toEnvVar(flagNoRecursion)},
 		},
 		&cli.GenericFlag{
 			Name:  flagLogLevel,
@@ -76,7 +70,7 @@ var validateCommand = &cli.Command{
 
 		v := validator.New(&validator.Options{
 			Concurrency: ctx.Int(flagConcurrency),
-			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
+			NoRecursion: ctx.Bool(flagNoRecursion),
 			SchemaMap:   schemaMap,
 			Logger:      logger,
 		})

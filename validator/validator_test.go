@@ -72,7 +72,6 @@ func (s *Suite) TestValidCases() {
 func (s *Suite) TestSchemaMap() {
 	v := validator.New(&validator.Options{
 		Concurrency: crawler.DefaultOptions.Concurrency,
-		Recursion:   crawler.DefaultOptions.Recursion,
 		SchemaMap: map[string]string{
 			"https://stac-extensions.github.io/custom/v1.0.0/schema.json": "https://example.com//extensions/custom.json",
 		},

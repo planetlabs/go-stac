@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -49,14 +48,10 @@ var statsCommand = &cli.Command{
 			Value:   crawler.DefaultOptions.Concurrency,
 			EnvVars: []string{toEnvVar(flagConcurrency)},
 		},
-		&cli.GenericFlag{
-			Name:  flagRecursion,
-			Usage: fmt.Sprintf("Recursion type (%s)", strings.Join(recursionValues, ", ")),
-			Value: &Enum{
-				Values:  recursionValues,
-				Default: string(crawler.DefaultOptions.Recursion),
-			},
-			EnvVars: []string{toEnvVar(flagRecursion)},
+		&cli.BoolFlag{
+			Name:    flagNoRecursion,
+			Usage:   "Visit a single resource",
+			EnvVars: []string{toEnvVar(flagNoRecursion)},
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -82,6 +77,8 @@ var statsCommand = &cli.Command{
 		)
 
 		skip := ctx.Bool(flagExcludeEntry)
+		noRecursion := ctx.Bool(flagNoRecursion)
+
 		visitor := func(location string, resource crawler.Resource) error {
 			if skip {
 				skip = false
@@ -157,12 +154,15 @@ var statsCommand = &cli.Command{
 			_ = bar.Add(1)
 			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", catalogs, collections, items))
 
+			if noRecursion {
+				return crawler.ErrStopRecursion
+			}
+
 			return nil
 		}
 
 		err := crawler.Crawl(entryPath, visitor, &crawler.Options{
 			Concurrency: ctx.Int(flagConcurrency),
-			Recursion:   crawler.RecursionType(ctx.String(flagRecursion)),
 		})
 		if err != nil {
 			return err
