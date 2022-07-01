@@ -1,7 +1,8 @@
-package crawler_test
+package crawler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -9,13 +10,67 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/planetlabs/go-stac/crawler"
+	"github.com/planetlabs/go-stac/internal/normurl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestTaskMarshalJSON(t *testing.T) {
+	entry, entryErr := normurl.New("https://example.com/")
+	require.NoError(t, entryErr)
+
+	resource, resourceErr := normurl.New("https://example.com/resource")
+	require.NoError(t, resourceErr)
+
+	task := &Task{entry: entry, resource: resource, taskType: resourceTask}
+
+	data, err := json.Marshal(task)
+	require.NoError(t, err)
+
+	expected := `{
+		"Entry": {
+			"Url": "https://example.com/",
+			"File": false
+		},
+		"Resource": {
+			"Url": "https://example.com/resource",
+			"File": false
+		},
+		"Type": "resource"
+	}`
+	assert.JSONEq(t, expected, string(data))
+}
+
+func TestTaskUnmarshalJSON(t *testing.T) {
+	data := []byte(`{
+		"Entry": {
+			"Url": "/path/to/entry",
+			"File": true
+		},
+		"Resource": {
+			"Url": "/path/to/resource",
+			"File": true
+		},
+		"Type": "resource"
+	}`)
+
+	task := &Task{}
+	jsonErr := json.Unmarshal(data, task)
+	require.NoError(t, jsonErr)
+
+	entry, entryErr := normurl.New("/path/to/entry")
+	require.NoError(t, entryErr)
+
+	resource, resourceErr := normurl.New("/path/to/resource")
+	require.NoError(t, resourceErr)
+
+	expected := &Task{entry: entry, resource: resource, taskType: resourceTask}
+
+	assert.Equal(t, expected, task)
+}
+
 func TestMemoryQueue(t *testing.T) {
-	queue := crawler.NewMemoryQueue(context.Background(), 3)
+	queue := NewMemoryQueue(context.Background(), 3)
 
 	urls := []string{
 		"https://example.com/1",
@@ -28,16 +83,22 @@ func TestMemoryQueue(t *testing.T) {
 	}
 
 	visited := sync.Map{}
-	queue.Handle(func(task *crawler.Task) error {
-		_, already := visited.LoadOrStore(task.Url, true)
+	queue.Handle(func(task *Task) error {
+		_, already := visited.LoadOrStore(task.resource.String(), true)
 		if already {
-			return fmt.Errorf("already visited %s", task.Url)
+			return fmt.Errorf("already visited %s", task.resource.String())
 		}
 		return nil
 	})
 
+	entry, entryErr := normurl.New("https://example.com/")
+	require.NoError(t, entryErr)
+
 	for _, url := range urls {
-		err := queue.Add(&crawler.Task{Url: url, Type: "test"})
+		resource, resourceErr := normurl.New(url)
+		require.NoError(t, resourceErr)
+
+		err := queue.Add(&Task{entry: entry, resource: resource, taskType: resourceTask})
 		require.NoError(t, err)
 	}
 
@@ -53,26 +114,27 @@ func TestMemoryQueueRecursive(t *testing.T) {
 	depth := 4
 	width := 3
 
-	queue := crawler.NewMemoryQueue(context.Background(), 5)
+	queue := NewMemoryQueue(context.Background(), 5)
 	visited := sync.Map{}
 
 	count := int64(0)
-	queue.Handle(func(task *crawler.Task) error {
-		_, already := visited.LoadOrStore(task.Url, true)
+	queue.Handle(func(task *Task) error {
+		_, already := visited.LoadOrStore(task.resource.String(), true)
 		if already {
-			return fmt.Errorf("already visited %s", task.Url)
+			return fmt.Errorf("already visited %s", task.resource.String())
 		}
 		atomic.AddInt64(&count, 1)
 
-		parts := strings.Split(task.Url, "/")
+		parts := strings.Split(task.resource.String(), "-")
 		d := len(parts)
 		if d >= depth {
 			return nil
 		}
 
 		for i := 0; i < width; i++ {
-			url := fmt.Sprintf("%s/%d", task.Url, i)
-			err := queue.Add(&crawler.Task{Url: url})
+			resource, resourceErr := normurl.New(fmt.Sprintf("%s-%d", task.resource.String(), i))
+			require.NoError(t, resourceErr)
+			err := queue.Add(task.new(resource, resourceTask))
 			if err != nil {
 				return err
 			}
@@ -81,7 +143,10 @@ func TestMemoryQueueRecursive(t *testing.T) {
 		return nil
 	})
 
-	require.NoError(t, queue.Add(&crawler.Task{Url: "0"}))
+	entry, entryErr := normurl.New("https://example.com/0")
+	require.NoError(t, entryErr)
+
+	require.NoError(t, queue.Add(&Task{entry: entry, resource: entry, taskType: resourceTask}))
 	require.NoError(t, queue.Wait())
 
 	expected := int64(math.Pow(float64(width), float64(depth))-1) / int64(width-1)
@@ -90,27 +155,32 @@ func TestMemoryQueueRecursive(t *testing.T) {
 
 func TestMemoryQueueError(t *testing.T) {
 	expectedError := fmt.Errorf("expected error")
-	queue := crawler.NewMemoryQueue(context.Background(), 3)
+	queue := NewMemoryQueue(context.Background(), 3)
 
 	visited := sync.Map{}
-	queue.Handle(func(task *crawler.Task) error {
-		_, already := visited.LoadOrStore(task.Url, true)
+	queue.Handle(func(task *Task) error {
+		_, already := visited.LoadOrStore(task.resource.String(), true)
 		if already {
-			return fmt.Errorf("already visited %s", task.Url)
+			return fmt.Errorf("already visited %s", task.resource.String())
 		}
-		if task.Type == "error" {
+		if string(task.taskType) == "error" {
 			return expectedError
 		}
 		return nil
 	})
 
+	entry, entryErr := normurl.New("https://example.com/")
+	require.NoError(t, entryErr)
+
 	for i := 0; i < 100; i++ {
-		url := fmt.Sprintf("https://example.com/%d", i)
-		taskType := "test"
+		resource, resourceErr := normurl.New(fmt.Sprintf("https://example.com/%d", i))
+		require.NoError(t, resourceErr)
+
+		tt := taskType("test")
 		if i == 42 {
-			taskType = "error"
+			tt = taskType("error")
 		}
-		require.NoError(t, queue.Add(&crawler.Task{Url: url, Type: taskType}))
+		require.NoError(t, queue.Add(&Task{entry: entry, resource: resource, taskType: tt}))
 	}
 
 	err := queue.Wait()

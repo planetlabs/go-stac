@@ -1,6 +1,7 @@
 package normurl
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -9,8 +10,46 @@ import (
 )
 
 type Locator struct {
-	url        *url.URL
-	isFilepath bool
+	url  *url.URL
+	file bool
+}
+
+type jsonLocator struct {
+	Url  string
+	File bool
+}
+
+func (l *Locator) UnmarshalJSON(data []byte) error {
+	var jl jsonLocator
+	if err := json.Unmarshal(data, &jl); err != nil {
+		return err
+	}
+
+	if jl.Url == "" {
+		return fmt.Errorf("missing url")
+	}
+
+	nl, newErr := New(jl.Url)
+	if newErr != nil {
+		return newErr
+	}
+
+	if jl.File != nl.file {
+		return fmt.Errorf("file flag mismatch")
+	}
+
+	l.file = jl.File
+	l.url = nl.url
+
+	return nil
+}
+
+func (l *Locator) MarshalJSON() ([]byte, error) {
+	jl := jsonLocator{
+		Url:  l.url.String(),
+		File: l.file,
+	}
+	return json.Marshal(jl)
 }
 
 func (l *Locator) String() string {
@@ -18,7 +57,7 @@ func (l *Locator) String() string {
 }
 
 func (l *Locator) SetQueryParam(param string, value string) {
-	if l.isFilepath {
+	if l.file {
 		return
 	}
 	query := l.url.Query()
@@ -31,7 +70,7 @@ func (l *Locator) SetQueryParam(param string, value string) {
 }
 
 func (l *Locator) IsFilepath() bool {
-	return l.isFilepath
+	return l.file
 }
 
 func New(s string) (*Locator, error) {
@@ -45,8 +84,8 @@ func New(s string) (*Locator, error) {
 			return nil, fmt.Errorf("expected absolute path")
 		}
 		loc := &Locator{
-			url:        u,
-			isFilepath: true,
+			url:  u,
+			file: true,
 		}
 		return loc, nil
 	}
@@ -59,8 +98,8 @@ func New(s string) (*Locator, error) {
 		u.Scheme = ""
 		u.Path = path
 		loc := &Locator{
-			url:        u,
-			isFilepath: true,
+			url:  u,
+			file: true,
 		}
 		return loc, nil
 	}
@@ -82,11 +121,11 @@ func (base *Locator) Resolve(s string) (*Locator, error) {
 		return New(s)
 	}
 
-	if base.isFilepath {
+	if base.file {
 		if filepath.IsAbs(s) {
 			loc := &Locator{
-				url:        u,
-				isFilepath: true,
+				url:  u,
+				file: true,
 			}
 			return loc, nil
 		}
@@ -94,16 +133,16 @@ func (base *Locator) Resolve(s string) (*Locator, error) {
 		baseDir := filepath.Dir(base.url.Path)
 		path := filepath.Join(baseDir, s)
 		loc := &Locator{
-			url:        &url.URL{Path: path},
-			isFilepath: true,
+			url:  &url.URL{Path: path},
+			file: true,
 		}
 		return loc, nil
 	}
 
 	resolved := base.url.ResolveReference(u)
 	loc := &Locator{
-		url:        resolved,
-		isFilepath: false,
+		url:  resolved,
+		file: false,
 	}
 	return loc, nil
 }

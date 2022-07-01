@@ -1,6 +1,7 @@
 package normurl_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -202,6 +203,118 @@ func TestResolve(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, c.expected, resolved.String())
 			}
+		})
+	}
+}
+
+func TestJSONRoundTrip(t *testing.T) {
+	cases := []string{
+		"https://example.com/path/to/file",
+		"/path/to/file",
+		"file:///path/to/file",
+	}
+
+	for _, c := range cases {
+		t.Run(c, func(t *testing.T) {
+			original, newErr := normurl.New(c)
+			require.NoError(t, newErr)
+
+			serialized, marshalErr := json.Marshal(original)
+			require.NoError(t, marshalErr)
+
+			var deserialized normurl.Locator
+			unmarshalErr := json.Unmarshal(serialized, &deserialized)
+			require.NoError(t, unmarshalErr)
+
+			assert.Equal(t, original.String(), deserialized.String())
+			assert.Equal(t, original.IsFilepath(), deserialized.IsFilepath())
+		})
+	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	cases := []struct {
+		input          string
+		expectedString string
+		expectedFile   bool
+		expectedErr    error
+	}{
+		{
+			input:          `{"Url": "https://example.com/path/to/file", "File": false}`,
+			expectedString: "https://example.com/path/to/file",
+			expectedFile:   false,
+		},
+		{
+			input:          `{"Url": "https://example.com/path/to/file"}`,
+			expectedString: "https://example.com/path/to/file",
+			expectedFile:   false,
+		},
+		{
+			input:          `{"Url": "file:///path/to/file", "File": true}`,
+			expectedString: "/path/to/file",
+			expectedFile:   true,
+		},
+		{
+			input:       `{"Url": "../path/to/file", "File": true}`,
+			expectedErr: errors.New("expected absolute path"),
+		},
+		{
+			input:       `{"Url": "https://example.com/path/to/file", "File": true}`,
+			expectedErr: errors.New("file flag mismatch"),
+		},
+		{
+			input:       `{"Url": "/path/to/file", "File": false}`,
+			expectedErr: errors.New("file flag mismatch"),
+		},
+		{
+			input:       `{"foo": "bar"}`,
+			expectedErr: errors.New("missing url"),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			var l normurl.Locator
+			err := json.Unmarshal([]byte(c.input), &l)
+			if c.expectedErr != nil {
+				assert.EqualError(t, err, c.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, c.expectedString, l.String())
+				assert.Equal(t, c.expectedFile, l.IsFilepath())
+			}
+		})
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "https://example.com/path/to/file",
+			expected: `{"Url": "https://example.com/path/to/file", "File": false}`,
+		},
+		{
+			input:    "/path/to/file",
+			expected: `{"Url": "/path/to/file", "File": true}`,
+		},
+		{
+			input:    "file:///path/to/file",
+			expected: `{"Url": "/path/to/file", "File": true}`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			original, newErr := normurl.New(c.input)
+			require.NoError(t, newErr)
+
+			serialized, marshalErr := json.Marshal(original)
+			require.NoError(t, marshalErr)
+
+			assert.JSONEq(t, c.expected, string(serialized))
 		})
 	}
 }
