@@ -121,9 +121,8 @@ func wrapErrorHandler(handler ErrorHandler) ErrorHandler {
 	}
 }
 
-// crawler crawls STAC resources.
-type crawler struct {
-	entry        *normurl.Locator
+// Crawler crawls STAC resources.
+type Crawler struct {
 	visitor      Visitor
 	queue        Queue
 	filter       func(string) bool
@@ -132,9 +131,6 @@ type crawler struct {
 
 // Options for creating a crawler.
 type Options struct {
-	// Optional context.  If provided, the crawler will stop when the context is done.
-	Context context.Context
-
 	// Optional function to limit which resources to crawl.  If provided, the function
 	// will be called with the URL or absolute path to a resource before it is crawled.
 	// If the function returns false, the resource will not be read and the visitor will
@@ -156,9 +152,6 @@ type Options struct {
 func applyOptions(options []*Options) *Options {
 	o := &Options{}
 	for _, option := range options {
-		if option.Context != nil {
-			o.Context = option.Context
-		}
 		if option.Queue != nil {
 			o.Queue = option.Queue
 		}
@@ -174,72 +167,23 @@ func applyOptions(options []*Options) *Options {
 
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
-	Context:      context.Background(),
 	ErrorHandler: func(err error) error { return err },
 }
 
-// Crawl calls the visitor for each resolved resource.
-//
-// The resource can be a file path or a URL.  Any error returned by visitor
-// will stop crawling and be returned by this function.  Context cancellation
-// will also stop crawling and the context error will be returned.
-func Crawl(resource string, visitor Visitor, options ...*Options) error {
-	c, err := newCrawler(resource, visitor, options...)
-	if err != nil {
-		return err
-	}
-
-	addErr := c.queue.Add(&Task{Url: c.entry.String(), Type: resourceTask})
-	if addErr != nil {
-		return addErr
-	}
-
-	return c.queue.Wait()
-}
-
-// Join adds a crawler to an existing crawl instead of initiating a new one.
-//
-// This is useful when two crawlers share the same queue and the first crawler
-// has been taken down or the queue is getting too large.  Join will return immediately
-// if the queue of tasks is empty.
-func Join(resource string, visitor Visitor, options ...*Options) error {
-	c, err := newCrawler(resource, visitor, options...)
-	if err != nil {
-		return err
-	}
-
-	return c.queue.Wait()
-}
-
-// newCrawler creates a crawler with the provided options (or DefaultOptions
+// New creates a crawler with the provided options (or DefaultOptions
 // if none are provided).
 //
-// The visitor will be called for each resource resolved.
-func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler, error) {
-	wd, wdErr := os.Getwd()
-	if wdErr != nil {
-		return nil, fmt.Errorf("failed to get working directory: %w", wdErr)
-	}
-
-	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
-	if baseErr != nil {
-		return nil, fmt.Errorf("failed to parse working directory: %w", baseErr)
-	}
-
-	loc, locErr := base.Resolve(resource)
-	if locErr != nil {
-		return nil, locErr
-	}
-
+// The visitor will be called for each resource added and for every additional
+// resource linked from the initial entry.
+func New(visitor Visitor, options ...*Options) (*Crawler, error) {
 	opt := applyOptions(append([]*Options{DefaultOptions}, options...))
 
 	queue := opt.Queue
 	if queue == nil {
-		queue = NewMemoryQueue(opt.Context, runtime.GOMAXPROCS(0))
+		queue = NewMemoryQueue(context.Background(), runtime.GOMAXPROCS(0))
 	}
 
-	c := &crawler{
-		entry:        loc,
+	c := &Crawler{
 		visitor:      visitor,
 		filter:       opt.Filter,
 		queue:        queue,
@@ -250,37 +194,86 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 	return c, nil
 }
 
-func (c *crawler) crawl(t *Task) error {
-	if c.filter != nil && !c.filter(t.Url) {
-		return nil
+// Add a new resource entry to crawl.
+//
+// The resource can be a file path or a URL.
+func (c *Crawler) Add(resource string) error {
+	wd, wdErr := os.Getwd()
+	if wdErr != nil {
+		return fmt.Errorf("failed to get working directory: %w", wdErr)
 	}
-	switch t.Type {
-	case resourceTask:
-		return c.crawlResource(t.Url)
-	case collectionsTask:
-		return c.crawlCollections(t.Url)
-	case childrenTask:
-		return c.crawlChildren(t.Url)
-	case featuresTask:
-		return c.crawlFeatures(t.Url)
-	default:
-		return fmt.Errorf("unknown task type: %s", t.Type)
-	}
-}
 
-func (c *crawler) crawlResource(resourceUrl string) error {
-	loc, locErr := normurl.New(resourceUrl)
+	base, baseErr := normurl.New(fmt.Sprintf("%s%c", wd, os.PathSeparator))
+	if baseErr != nil {
+		return fmt.Errorf("failed to parse working directory: %w", baseErr)
+	}
+
+	loc, locErr := base.Resolve(resource)
 	if locErr != nil {
 		return locErr
 	}
 
+	addErr := c.queue.Add(&Task{entry: loc, resource: loc, taskType: resourceTask})
+	if addErr != nil {
+		return addErr
+	}
+
+	return nil
+}
+
+// Wait for a crawl to finish.
+func (c *Crawler) Wait() error {
+	return c.queue.Wait()
+}
+
+// Crawl calls the visitor for each resolved resource.
+//
+// The resource can be a file path or a URL.  Any error returned by visitor
+// will stop crawling and be returned by this function.  Context cancellation
+// will also stop crawling and the context error will be returned.
+//
+// This is a shorthand for calling New, Add, and Wait when you only need to crawl
+// a single entry.
+func Crawl(resource string, visitor Visitor, options ...*Options) error {
+	c, err := New(visitor, options...)
+	if err != nil {
+		return err
+	}
+
+	addErr := c.Add(resource)
+	if addErr != nil {
+		return addErr
+	}
+
+	return c.Wait()
+}
+
+func (c *Crawler) crawl(t *Task) error {
+	if c.filter != nil && !c.filter(t.resource.String()) {
+		return nil
+	}
+	switch t.taskType {
+	case resourceTask:
+		return c.crawlResource(t)
+	case collectionsTask:
+		return c.crawlCollections(t)
+	case childrenTask:
+		return c.crawlChildren(t)
+	case featuresTask:
+		return c.crawlFeatures(t)
+	default:
+		return fmt.Errorf("unknown task type: %s", t.taskType)
+	}
+}
+
+func (c *Crawler) crawlResource(task *Task) error {
 	resource := Resource{}
-	loadErr := load(c.entry, loc, &resource)
+	loadErr := load(task.entry, task.resource, &resource)
 	if loadErr != nil {
 		return c.errorHandler(loadErr)
 	}
 
-	if err := c.errorHandler(c.visitor(resourceUrl, resource)); err != nil {
+	if err := c.errorHandler(c.visitor(task.resource.String(), resource)); err != nil {
 		if errors.Is(err, ErrStopRecursion) {
 			return nil
 		}
@@ -292,11 +285,11 @@ func (c *crawler) crawlResource(resourceUrl string) error {
 	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
 		dataLink := links.Rel("data", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if dataLink != nil {
-			linkLoc, err := loc.Resolve(dataLink["href"])
+			linkLoc, err := task.resource.Resolve(dataLink["href"])
 			if err != nil {
 				return c.errorHandler(err)
 			}
-			return c.queue.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+			return c.queue.Add(task.new(linkLoc, collectionsTask))
 		}
 	}
 
@@ -304,11 +297,11 @@ func (c *crawler) crawlResource(resourceUrl string) error {
 	if resource.Type() == Catalog && len(resource.ConformsTo()) > 1 {
 		childrenLink := links.Rel("children", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if childrenLink != nil {
-			linkLoc, err := loc.Resolve(childrenLink["href"])
+			linkLoc, err := task.resource.Resolve(childrenLink["href"])
 			if err != nil {
 				return c.errorHandler(err)
 			}
-			return c.queue.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
+			return c.queue.Add(task.new(linkLoc, childrenTask))
 		}
 	}
 
@@ -316,12 +309,12 @@ func (c *crawler) crawlResource(resourceUrl string) error {
 		// shortcut for "items" link
 		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if itemsLink != nil {
-			linkLoc, err := loc.Resolve(itemsLink["href"])
+			linkLoc, err := task.resource.Resolve(itemsLink["href"])
 			if err != nil {
 				return c.errorHandler(err)
 			}
 			linkLoc.SetQueryParam("limit", "250")
-			return c.queue.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+			return c.queue.Add(task.new(linkLoc, featuresTask))
 		}
 	}
 
@@ -329,11 +322,11 @@ func (c *crawler) crawlResource(resourceUrl string) error {
 		rel := link["rel"]
 		if rel == "item" || rel == "child" {
 			if LinkTypeApplicationJSON(link) || LinkTypeAnyJSON(link) || LinkTypeNone(link) {
-				linkLoc, err := loc.Resolve(link["href"])
+				linkLoc, err := task.resource.Resolve(link["href"])
 				if err != nil {
 					return c.errorHandler(err)
 				}
-				addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
+				addErr := c.queue.Add(task.new(linkLoc, resourceTask))
 				if addErr != nil {
 					return addErr
 				}
@@ -344,13 +337,9 @@ func (c *crawler) crawlResource(resourceUrl string) error {
 	return nil
 }
 
-func (c *crawler) crawlCollections(collectionsUrl string) error {
-	loc, locErr := normurl.New(collectionsUrl)
-	if locErr != nil {
-		return locErr
-	}
+func (c *Crawler) crawlCollections(task *Task) error {
 	response := &featureCollectionsResponse{}
-	loadErr := load(c.entry, loc, response)
+	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
 		return c.errorHandler(loadErr)
 	}
@@ -363,9 +352,9 @@ func (c *crawler) crawlCollections(collectionsUrl string) error {
 
 		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for collection %d in %s", i, collectionsUrl))
+			return c.errorHandler(fmt.Errorf("missing self link for collection %d in %s", i, task.resource.String()))
 		}
-		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
 			return c.errorHandler(selfLinkErr)
 		}
@@ -378,14 +367,14 @@ func (c *crawler) crawlCollections(collectionsUrl string) error {
 
 		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if itemsLink == nil {
-			return c.errorHandler(fmt.Errorf("missing items link for collection %d in %s", i, collectionsUrl))
+			return c.errorHandler(fmt.Errorf("missing items link for collection %d in %s", i, task.resource.String()))
 		}
-		itemsLinkLoc, itemsLinkErr := loc.Resolve(itemsLink["href"])
+		itemsLinkLoc, itemsLinkErr := task.resource.Resolve(itemsLink["href"])
 		if itemsLinkErr != nil {
 			return c.errorHandler(itemsLinkErr)
 		}
 		itemsLinkLoc.SetQueryParam("limit", "250")
-		addErr := c.queue.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
+		addErr := c.queue.Add(task.new(itemsLinkLoc, featuresTask))
 		if addErr != nil {
 			return addErr
 		}
@@ -393,11 +382,11 @@ func (c *crawler) crawlCollections(collectionsUrl string) error {
 
 	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 	if nextLink != nil {
-		linkLoc, err := loc.Resolve(nextLink["href"])
+		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+		addErr := c.queue.Add(task.new(linkLoc, collectionsTask))
 		if addErr != nil {
 			return addErr
 		}
@@ -406,13 +395,9 @@ func (c *crawler) crawlCollections(collectionsUrl string) error {
 	return nil
 }
 
-func (c *crawler) crawlChildren(childrenUrl string) error {
-	loc, locErr := normurl.New(childrenUrl)
-	if locErr != nil {
-		return locErr
-	}
+func (c *Crawler) crawlChildren(task *Task) error {
 	response := &childrenResponse{}
-	loadErr := load(c.entry, loc, response)
+	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
 		return c.errorHandler(loadErr)
 	}
@@ -425,13 +410,13 @@ func (c *crawler) crawlChildren(childrenUrl string) error {
 
 		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for %s %d in %s", resource.Type(), i, childrenUrl))
+			return c.errorHandler(fmt.Errorf("missing self link for %s %d in %s", resource.Type(), i, task.resource.String()))
 		}
-		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
 			return c.errorHandler(selfLinkErr)
 		}
-		addErr := c.queue.Add(&Task{Url: selfLinkLoc.String(), Type: resourceTask})
+		addErr := c.queue.Add(task.new(selfLinkLoc, resourceTask))
 		if addErr != nil {
 			return addErr
 		}
@@ -439,11 +424,11 @@ func (c *crawler) crawlChildren(childrenUrl string) error {
 
 	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 	if nextLink != nil {
-		linkLoc, err := loc.Resolve(nextLink["href"])
+		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
+		addErr := c.queue.Add(task.new(linkLoc, childrenTask))
 		if addErr != nil {
 			return addErr
 		}
@@ -452,14 +437,9 @@ func (c *crawler) crawlChildren(childrenUrl string) error {
 	return nil
 }
 
-func (c *crawler) crawlFeatures(featuresUrl string) error {
-	loc, locErr := normurl.New(featuresUrl)
-	if locErr != nil {
-		return c.errorHandler(locErr)
-	}
-
+func (c *Crawler) crawlFeatures(task *Task) error {
 	response := &featureCollectionResponse{}
-	loadErr := load(c.entry, loc, response)
+	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
 		return c.errorHandler(loadErr)
 	}
@@ -471,10 +451,10 @@ func (c *crawler) crawlFeatures(featuresUrl string) error {
 		links := resource.Links()
 		selfLink := links.Rel("self", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for item %d in %s", i, featuresUrl))
+			return c.errorHandler(fmt.Errorf("missing self link for item %d in %s", i, task.resource.String()))
 		}
 
-		selfLinkLoc, selfLinkErr := loc.Resolve(selfLink["href"])
+		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
 			return c.errorHandler(selfLinkErr)
 		}
@@ -490,11 +470,11 @@ func (c *crawler) crawlFeatures(featuresUrl string) error {
 
 	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 	if nextLink != nil {
-		linkLoc, err := loc.Resolve(nextLink["href"])
+		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+		addErr := c.queue.Add(task.new(linkLoc, featuresTask))
 		if addErr != nil {
 			return addErr
 		}

@@ -2,21 +2,81 @@ package crawler
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sync"
 
+	"github.com/planetlabs/go-stac/internal/normurl"
 	"golang.org/x/sync/errgroup"
 )
 
+type taskType string
+
 const (
-	resourceTask    = "resource"
-	collectionsTask = "collections"
-	childrenTask    = "children"
-	featuresTask    = "features"
+	resourceTask    = taskType("resource")
+	collectionsTask = taskType("collections")
+	childrenTask    = taskType("children")
+	featuresTask    = taskType("features")
 )
 
+var validTaskTypes = map[taskType]bool{
+	resourceTask:    true,
+	collectionsTask: true,
+	childrenTask:    true,
+	featuresTask:    true,
+}
+
 type Task struct {
-	Url  string
-	Type string
+	entry    *normurl.Locator
+	resource *normurl.Locator
+	taskType taskType
+}
+
+func (t *Task) new(resource *normurl.Locator, taskType taskType) *Task {
+	return &Task{
+		entry:    t.entry,
+		resource: resource,
+		taskType: taskType,
+	}
+}
+
+type jsonTask struct {
+	Entry    *normurl.Locator
+	Resource *normurl.Locator
+	Type     string
+}
+
+func (t *Task) UnmarshalJSON(data []byte) error {
+	var jt jsonTask
+	if err := json.Unmarshal(data, &jt); err != nil {
+		return err
+	}
+
+	t.entry = jt.Entry
+	if t.entry == nil {
+		return fmt.Errorf("missing entry")
+	}
+
+	t.resource = jt.Resource
+	if t.resource == nil {
+		return fmt.Errorf("missing resource")
+	}
+
+	t.taskType = taskType(jt.Type)
+	if !validTaskTypes[t.taskType] {
+		return fmt.Errorf("invalid task type: %s", t.taskType)
+	}
+
+	return nil
+}
+
+func (t *Task) MarshalJSON() ([]byte, error) {
+	jt := jsonTask{
+		Entry:    t.entry,
+		Resource: t.resource,
+		Type:     string(t.taskType),
+	}
+	return json.Marshal(jt)
 }
 
 type Handler func(task *Task) error
@@ -28,6 +88,9 @@ type Queue interface {
 }
 
 // NewMemoryQueue is used if a custom queue is not provided for a crawl.
+//
+// The crawl will stop if the provided context is cancelled.  The limit is used
+// to control the number of resources that will be visited concurrently.
 func NewMemoryQueue(ctx context.Context, limit int) Queue {
 	group, ctx := errgroup.WithContext(ctx)
 	group.SetLimit(limit)
