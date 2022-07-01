@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/planetlabs/go-stac/crawler"
 	"github.com/planetlabs/go-stac/validator"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/stretchr/testify/suite"
@@ -71,7 +70,6 @@ func (s *Suite) TestValidCases() {
 
 func (s *Suite) TestSchemaMap() {
 	v := validator.New(&validator.Options{
-		Concurrency: crawler.DefaultOptions.Concurrency,
 		SchemaMap: map[string]string{
 			"https://stac-extensions.github.io/custom/v1.0.0/schema.json": "https://example.com//extensions/custom.json",
 		},

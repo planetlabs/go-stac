@@ -52,12 +52,8 @@ github.com/stretchr/testify v1.7.5 h1:s5PTfem8p8EbKQOctVV53k6jCJt3UX4IEJzwh+C324
 github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/tschaub/jsonschema/v5 v5.1.0-beta.1 h1:yuHeTkhFAApxLRdWXFEeArU0iMIBJm27f1/9t41Gf5A=
 github.com/tschaub/jsonschema/v5 v5.1.0-beta.1/go.mod h1:FKdcjfQW6rpZSnxxUvEA5H/cDPdvJ/SZJQLWWXWGrZ0=
-github.com/tschaub/limited v0.2.0 h1:XBjhp4JNhRruzRlU4/RCLGxxSmRPO+rJelpB5EVZYJU=
-github.com/tschaub/limited v0.2.0/go.mod h1:MpOH3bHLpfI+6MO7P1DulWY4aXXqKdkUn8v4eMm4xOI=
 github.com/tschaub/retry v1.0.0 h1:zY9jeVNPxv2UovkFikgYOpvT5q52/3KQuJrY70MK+ws=
 github.com/tschaub/retry v1.0.0/go.mod h1:yBQOt5++ZYLg8LqzLICIFMmiG7WM45CYCnemriP95T8=
-github.com/tschaub/workgroup v0.4.1 h1:ceOJsWBgPT6BPgnpErF9L0AUyiSMitMAdJacWHUqqGY=
-github.com/tschaub/workgroup v0.4.1/go.mod h1:2+S8HaK4tzsfn7NkaLtJpnuO04NjSk/w5pRuafqwYoo=
 github.com/urfave/cli/v2 v2.10.3 h1:oi571Fxz5aHugfBAJd5nkwSk3fzATXtMlpxdLylSCMo=
 github.com/urfave/cli/v2 v2.10.3/go.mod h1:f8iq5LtQ/bLxafbdBSLPPNsgaW0l/2fYYEHhAyPlwvo=
 github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 h1:bAn7/zixMGCfxrRTfdpNzjtPYqr8smhKouy9mxVdGPU=

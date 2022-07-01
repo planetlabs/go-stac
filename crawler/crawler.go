@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/planetlabs/go-stac/internal/normurl"
 	"github.com/tschaub/retry"
-	"github.com/tschaub/workgroup"
 )
 
 var httpClient = retryablehttp.NewClient()
@@ -126,7 +125,7 @@ func wrapErrorHandler(handler ErrorHandler) ErrorHandler {
 type crawler struct {
 	entry        *normurl.Locator
 	visitor      Visitor
-	worker       *workgroup.Worker[*Task]
+	queue        Queue
 	filter       func(string) bool
 	errorHandler ErrorHandler
 }
@@ -135,9 +134,6 @@ type crawler struct {
 type Options struct {
 	// Optional context.  If provided, the crawler will stop when the context is done.
 	Context context.Context
-
-	// Limit to the number of resources to fetch and visit concurrently.
-	Concurrency int
 
 	// Optional function to limit which resources to crawl.  If provided, the function
 	// will be called with the URL or absolute path to a resource before it is crawled.
@@ -154,7 +150,7 @@ type Options struct {
 	// Optional queue to use for crawling tasks.  If not provided, an in-memory queue
 	// will be used.  When running a crawl across multiple processes, it can be useful
 	// to provide a queue that is shared across processes.
-	Queue workgroup.Queue[*Task]
+	Queue Queue
 }
 
 func applyOptions(options []*Options) *Options {
@@ -162,9 +158,6 @@ func applyOptions(options []*Options) *Options {
 	for _, option := range options {
 		if option.Context != nil {
 			o.Context = option.Context
-		}
-		if option.Concurrency > 0 {
-			o.Concurrency = option.Concurrency
 		}
 		if option.Queue != nil {
 			o.Queue = option.Queue
@@ -182,7 +175,6 @@ func applyOptions(options []*Options) *Options {
 // DefaultOptions used when creating a new crawler.
 var DefaultOptions = &Options{
 	Context:      context.Background(),
-	Concurrency:  runtime.GOMAXPROCS(0),
 	ErrorHandler: func(err error) error { return err },
 }
 
@@ -197,12 +189,12 @@ func Crawl(resource string, visitor Visitor, options ...*Options) error {
 		return err
 	}
 
-	addErr := c.worker.Add(&Task{Url: c.entry.String(), Type: resourceTask})
+	addErr := c.queue.Add(&Task{Url: c.entry.String(), Type: resourceTask})
 	if addErr != nil {
 		return addErr
 	}
 
-	return c.worker.Wait()
+	return c.queue.Wait()
 }
 
 // Join adds a crawler to an existing crawl instead of initiating a new one.
@@ -216,7 +208,7 @@ func Join(resource string, visitor Visitor, options ...*Options) error {
 		return err
 	}
 
-	return c.worker.Wait()
+	return c.queue.Wait()
 }
 
 // newCrawler creates a crawler with the provided options (or DefaultOptions
@@ -241,54 +233,42 @@ func newCrawler(resource string, visitor Visitor, options ...*Options) (*crawler
 
 	opt := applyOptions(append([]*Options{DefaultOptions}, options...))
 
+	queue := opt.Queue
+	if queue == nil {
+		queue = NewMemoryQueue(opt.Context, runtime.GOMAXPROCS(0))
+	}
+
 	c := &crawler{
 		entry:        loc,
 		visitor:      visitor,
 		filter:       opt.Filter,
+		queue:        queue,
 		errorHandler: wrapErrorHandler(opt.ErrorHandler),
 	}
-
-	c.worker = workgroup.New(&workgroup.Options[*Task]{
-		Work:    c.crawl,
-		Context: opt.Context,
-		Limit:   opt.Concurrency,
-		Queue:   opt.Queue,
-	})
+	queue.Handle(c.crawl)
 
 	return c, nil
 }
 
-const (
-	resourceTask    = "resource"
-	collectionsTask = "collections"
-	childrenTask    = "children"
-	featuresTask    = "features"
-)
-
-type Task struct {
-	Url  string
-	Type string
-}
-
-func (c *crawler) crawl(worker *workgroup.Worker[*Task], t *Task) error {
+func (c *crawler) crawl(t *Task) error {
 	if c.filter != nil && !c.filter(t.Url) {
 		return nil
 	}
 	switch t.Type {
 	case resourceTask:
-		return c.crawlResource(worker, t.Url)
+		return c.crawlResource(t.Url)
 	case collectionsTask:
-		return c.crawlCollections(worker, t.Url)
+		return c.crawlCollections(t.Url)
 	case childrenTask:
-		return c.crawlChildren(worker, t.Url)
+		return c.crawlChildren(t.Url)
 	case featuresTask:
-		return c.crawlFeatures(worker, t.Url)
+		return c.crawlFeatures(t.Url)
 	default:
 		return fmt.Errorf("unknown task type: %s", t.Type)
 	}
 }
 
-func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl string) error {
+func (c *crawler) crawlResource(resourceUrl string) error {
 	loc, locErr := normurl.New(resourceUrl)
 	if locErr != nil {
 		return locErr
@@ -316,7 +296,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 			if err != nil {
 				return c.errorHandler(err)
 			}
-			return worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+			return c.queue.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 		}
 	}
 
@@ -328,7 +308,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 			if err != nil {
 				return c.errorHandler(err)
 			}
-			return worker.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
+			return c.queue.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
 		}
 	}
 
@@ -341,7 +321,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 				return c.errorHandler(err)
 			}
 			linkLoc.SetQueryParam("limit", "250")
-			return worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+			return c.queue.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 		}
 	}
 
@@ -353,7 +333,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 				if err != nil {
 					return c.errorHandler(err)
 				}
-				addErr := worker.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
+				addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: resourceTask})
 				if addErr != nil {
 					return addErr
 				}
@@ -364,7 +344,7 @@ func (c *crawler) crawlResource(worker *workgroup.Worker[*Task], resourceUrl str
 	return nil
 }
 
-func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsUrl string) error {
+func (c *crawler) crawlCollections(collectionsUrl string) error {
 	loc, locErr := normurl.New(collectionsUrl)
 	if locErr != nil {
 		return locErr
@@ -405,7 +385,7 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 			return c.errorHandler(itemsLinkErr)
 		}
 		itemsLinkLoc.SetQueryParam("limit", "250")
-		addErr := worker.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
+		addErr := c.queue.Add(&Task{Url: itemsLinkLoc.String(), Type: featuresTask})
 		if addErr != nil {
 			return addErr
 		}
@@ -417,7 +397,7 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
+		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: collectionsTask})
 		if addErr != nil {
 			return addErr
 		}
@@ -426,7 +406,7 @@ func (c *crawler) crawlCollections(worker *workgroup.Worker[*Task], collectionsU
 	return nil
 }
 
-func (c *crawler) crawlChildren(worker *workgroup.Worker[*Task], childrenUrl string) error {
+func (c *crawler) crawlChildren(childrenUrl string) error {
 	loc, locErr := normurl.New(childrenUrl)
 	if locErr != nil {
 		return locErr
@@ -451,7 +431,7 @@ func (c *crawler) crawlChildren(worker *workgroup.Worker[*Task], childrenUrl str
 		if selfLinkErr != nil {
 			return c.errorHandler(selfLinkErr)
 		}
-		addErr := worker.Add(&Task{Url: selfLinkLoc.String(), Type: resourceTask})
+		addErr := c.queue.Add(&Task{Url: selfLinkLoc.String(), Type: resourceTask})
 		if addErr != nil {
 			return addErr
 		}
@@ -463,7 +443,7 @@ func (c *crawler) crawlChildren(worker *workgroup.Worker[*Task], childrenUrl str
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
+		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: childrenTask})
 		if addErr != nil {
 			return addErr
 		}
@@ -472,7 +452,7 @@ func (c *crawler) crawlChildren(worker *workgroup.Worker[*Task], childrenUrl str
 	return nil
 }
 
-func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl string) error {
+func (c *crawler) crawlFeatures(featuresUrl string) error {
 	loc, locErr := normurl.New(featuresUrl)
 	if locErr != nil {
 		return c.errorHandler(locErr)
@@ -514,7 +494,7 @@ func (c *crawler) crawlFeatures(worker *workgroup.Worker[*Task], featuresUrl str
 		if err != nil {
 			return c.errorHandler(err)
 		}
-		addErr := worker.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
+		addErr := c.queue.Add(&Task{Url: linkLoc.String(), Type: featuresTask})
 		if addErr != nil {
 			return addErr
 		}
