@@ -94,14 +94,13 @@ func TestMemoryQueue(t *testing.T) {
 	entry, entryErr := normurl.New("https://example.com/")
 	require.NoError(t, entryErr)
 
-	for _, url := range urls {
+	tasks := make([]*Task, len(urls))
+	for i, url := range urls {
 		resource, resourceErr := normurl.New(url)
 		require.NoError(t, resourceErr)
-
-		err := queue.Add(&Task{entry: entry, resource: resource, taskType: resourceTask})
-		require.NoError(t, err)
+		tasks[i] = &Task{entry: entry, resource: resource, taskType: resourceTask}
 	}
-
+	require.NoError(t, queue.Add(tasks))
 	require.NoError(t, queue.Wait())
 
 	for _, url := range urls {
@@ -131,22 +130,19 @@ func TestMemoryQueueRecursive(t *testing.T) {
 			return nil
 		}
 
+		tasks := make([]*Task, width)
 		for i := 0; i < width; i++ {
 			resource, resourceErr := normurl.New(fmt.Sprintf("%s-%d", task.resource.String(), i))
 			require.NoError(t, resourceErr)
-			err := queue.Add(task.new(resource, resourceTask))
-			if err != nil {
-				return err
-			}
+			tasks[i] = task.new(resource, resourceTask)
 		}
-
-		return nil
+		return queue.Add(tasks)
 	})
 
 	entry, entryErr := normurl.New("https://example.com/0")
 	require.NoError(t, entryErr)
 
-	require.NoError(t, queue.Add(&Task{entry: entry, resource: entry, taskType: resourceTask}))
+	require.NoError(t, queue.Add([]*Task{{entry: entry, resource: entry, taskType: resourceTask}}))
 	require.NoError(t, queue.Wait())
 
 	expected := int64(math.Pow(float64(width), float64(depth))-1) / int64(width-1)
@@ -172,7 +168,8 @@ func TestMemoryQueueError(t *testing.T) {
 	entry, entryErr := normurl.New("https://example.com/")
 	require.NoError(t, entryErr)
 
-	for i := 0; i < 100; i++ {
+	tasks := make([]*Task, 100)
+	for i := 0; i < len(tasks); i++ {
 		resource, resourceErr := normurl.New(fmt.Sprintf("https://example.com/%d", i))
 		require.NoError(t, resourceErr)
 
@@ -180,8 +177,9 @@ func TestMemoryQueueError(t *testing.T) {
 		if i == 42 {
 			tt = taskType("error")
 		}
-		require.NoError(t, queue.Add(&Task{entry: entry, resource: resource, taskType: tt}))
+		tasks[i] = &Task{entry: entry, resource: resource, taskType: tt}
 	}
+	require.NoError(t, queue.Add(tasks))
 
 	err := queue.Wait()
 	assert.Equal(t, expectedError, err)
