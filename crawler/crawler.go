@@ -213,7 +213,7 @@ func (c *Crawler) Add(resource string) error {
 		return locErr
 	}
 
-	addErr := c.queue.Add(&Task{entry: loc, resource: loc, taskType: resourceTask})
+	addErr := c.queue.Add([]*Task{{entry: loc, resource: loc, taskType: resourceTask}})
 	if addErr != nil {
 		return addErr
 	}
@@ -252,32 +252,38 @@ func (c *Crawler) crawl(t *Task) error {
 	if c.filter != nil && !c.filter(t.resource.String()) {
 		return nil
 	}
+	var tasks []*Task
+	var err error
 	switch t.taskType {
 	case resourceTask:
-		return c.crawlResource(t)
+		tasks, err = c.crawlResource(t)
 	case collectionsTask:
-		return c.crawlCollections(t)
+		tasks, err = c.crawlCollections(t)
 	case childrenTask:
-		return c.crawlChildren(t)
+		tasks, err = c.crawlChildren(t)
 	case featuresTask:
-		return c.crawlFeatures(t)
+		tasks, err = c.crawlFeatures(t)
 	default:
 		return fmt.Errorf("unknown task type: %s", t.taskType)
 	}
+	if err != nil {
+		return err
+	}
+	return c.queue.Add(tasks)
 }
 
-func (c *Crawler) crawlResource(task *Task) error {
+func (c *Crawler) crawlResource(task *Task) ([]*Task, error) {
 	resource := Resource{}
 	loadErr := load(task.entry, task.resource, &resource)
 	if loadErr != nil {
-		return c.errorHandler(loadErr)
+		return nil, c.errorHandler(loadErr)
 	}
 
 	if err := c.errorHandler(c.visitor(task.resource.String(), resource)); err != nil {
 		if errors.Is(err, ErrStopRecursion) {
-			return nil
+			return nil, nil
 		}
-		return err
+		return nil, err
 	}
 
 	links := resource.Links()
@@ -287,9 +293,9 @@ func (c *Crawler) crawlResource(task *Task) error {
 		if dataLink != nil {
 			linkLoc, err := task.resource.Resolve(dataLink["href"])
 			if err != nil {
-				return c.errorHandler(err)
+				return nil, c.errorHandler(err)
 			}
-			return c.queue.Add(task.new(linkLoc, collectionsTask))
+			return []*Task{task.new(linkLoc, collectionsTask)}, nil
 		}
 	}
 
@@ -299,9 +305,9 @@ func (c *Crawler) crawlResource(task *Task) error {
 		if childrenLink != nil {
 			linkLoc, err := task.resource.Resolve(childrenLink["href"])
 			if err != nil {
-				return c.errorHandler(err)
+				return nil, c.errorHandler(err)
 			}
-			return c.queue.Add(task.new(linkLoc, childrenTask))
+			return []*Task{task.new(linkLoc, childrenTask)}, nil
 		}
 	}
 
@@ -311,152 +317,217 @@ func (c *Crawler) crawlResource(task *Task) error {
 		if itemsLink != nil {
 			linkLoc, err := task.resource.Resolve(itemsLink["href"])
 			if err != nil {
-				return c.errorHandler(err)
+				return nil, c.errorHandler(err)
 			}
 			linkLoc.SetQueryParam("limit", "250")
-			return c.queue.Add(task.new(linkLoc, featuresTask))
+			return []*Task{task.new(linkLoc, featuresTask)}, nil
 		}
 	}
 
+	tasks := []*Task{}
 	for _, link := range links {
 		rel := link["rel"]
 		if rel == "item" || rel == "child" {
 			if LinkTypeApplicationJSON(link) || LinkTypeAnyJSON(link) || LinkTypeNone(link) {
 				linkLoc, err := task.resource.Resolve(link["href"])
 				if err != nil {
-					return c.errorHandler(err)
+					unhandledErr := c.errorHandler(err)
+					if unhandledErr != nil {
+						return nil, unhandledErr
+					} else {
+						continue
+					}
 				}
-				addErr := c.queue.Add(task.new(linkLoc, resourceTask))
-				if addErr != nil {
-					return addErr
-				}
+				tasks = append(tasks, task.new(linkLoc, resourceTask))
 			}
 		}
 	}
 
-	return nil
+	return tasks, nil
 }
 
-func (c *Crawler) crawlCollections(task *Task) error {
+func (c *Crawler) crawlCollections(task *Task) ([]*Task, error) {
 	response := &featureCollectionsResponse{}
 	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
-		return c.errorHandler(loadErr)
+		return nil, c.errorHandler(loadErr)
 	}
 
+	tasks := []*Task{}
 	for i, resource := range response.Collections {
 		if resource.Type() != Collection {
-			return c.errorHandler(fmt.Errorf("expected collection at index %d, got %s", i, resource.Type()))
+			unhandledErr := c.errorHandler(fmt.Errorf("expected collection at index %d, got %s", i, resource.Type()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 		links := resource.Links()
 
 		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for collection %d in %s", i, task.resource.String()))
+			unhandledErr := c.errorHandler(fmt.Errorf("missing self link for collection %d in %s", i, task.resource.String()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
-			return c.errorHandler(selfLinkErr)
+			unhandledErr := c.errorHandler(selfLinkErr)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
+
 		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
 			if errors.Is(err, ErrStopRecursion) {
 				continue
 			}
-			return err
+			return nil, err
 		}
 
 		itemsLink := links.Rel("items", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if itemsLink == nil {
-			return c.errorHandler(fmt.Errorf("missing items link for collection %d in %s", i, task.resource.String()))
+			unhandledErr := c.errorHandler(fmt.Errorf("missing items link for collection %d in %s", i, task.resource.String()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
+
 		itemsLinkLoc, itemsLinkErr := task.resource.Resolve(itemsLink["href"])
 		if itemsLinkErr != nil {
-			return c.errorHandler(itemsLinkErr)
+			unhandledErr := c.errorHandler(itemsLinkErr)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
+
 		itemsLinkLoc.SetQueryParam("limit", "250")
-		addErr := c.queue.Add(task.new(itemsLinkLoc, featuresTask))
-		if addErr != nil {
-			return addErr
-		}
+		tasks = append(tasks, task.new(itemsLinkLoc, featuresTask))
 	}
 
 	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 	if nextLink != nil {
 		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
-			return c.errorHandler(err)
+			unhandledErr := c.errorHandler(err)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				return tasks, nil
+			}
 		}
-		addErr := c.queue.Add(task.new(linkLoc, collectionsTask))
-		if addErr != nil {
-			return addErr
-		}
+		tasks = append(tasks, task.new(linkLoc, collectionsTask))
 	}
 
-	return nil
+	return tasks, nil
 }
 
-func (c *Crawler) crawlChildren(task *Task) error {
+func (c *Crawler) crawlChildren(task *Task) ([]*Task, error) {
 	response := &childrenResponse{}
 	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
-		return c.errorHandler(loadErr)
+		return nil, c.errorHandler(loadErr)
 	}
 
+	tasks := []*Task{}
 	for i, resource := range response.Children {
 		if resource.Type() != Catalog && resource.Type() != Collection {
-			return c.errorHandler(fmt.Errorf("expected catalog or collection at index %d, got %s", i, resource.Type()))
+			unhandledErr := c.errorHandler(fmt.Errorf("expected catalog or collection at index %d, got %s", i, resource.Type()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 		links := resource.Links()
 
 		selfLink := links.Rel("self", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for %s %d in %s", resource.Type(), i, task.resource.String()))
+			unhandledErr := c.errorHandler(fmt.Errorf("missing self link for %s %d in %s", resource.Type(), i, task.resource.String()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
+
 		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
-			return c.errorHandler(selfLinkErr)
+			unhandledErr := c.errorHandler(selfLinkErr)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
-		addErr := c.queue.Add(task.new(selfLinkLoc, resourceTask))
-		if addErr != nil {
-			return addErr
-		}
+
+		tasks = append(tasks, task.new(selfLinkLoc, resourceTask))
 	}
 
 	nextLink := response.Links.Rel("next", LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 	if nextLink != nil {
 		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
-			return c.errorHandler(err)
+			unhandledErr := c.errorHandler(err)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				return tasks, nil
+			}
 		}
-		addErr := c.queue.Add(task.new(linkLoc, childrenTask))
-		if addErr != nil {
-			return addErr
-		}
+		tasks = append(tasks, task.new(linkLoc, childrenTask))
 	}
 
-	return nil
+	return tasks, nil
 }
 
-func (c *Crawler) crawlFeatures(task *Task) error {
+func (c *Crawler) crawlFeatures(task *Task) ([]*Task, error) {
 	response := &featureCollectionResponse{}
 	loadErr := load(task.entry, task.resource, response)
 	if loadErr != nil {
-		return c.errorHandler(loadErr)
+		return nil, c.errorHandler(loadErr)
 	}
+
+	tasks := []*Task{}
 	for i, resource := range response.Features {
 		if resource.Type() != Item {
-			return c.errorHandler(fmt.Errorf("expected item at index %d, got %s", i, resource.Type()))
+			unhandledErr := c.errorHandler(fmt.Errorf("expected item at index %d, got %s", i, resource.Type()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 
 		links := resource.Links()
 		selfLink := links.Rel("self", LinkTypeGeoJSON, LinkTypeApplicationJSON, LinkTypeAnyJSON, LinkTypeNone)
 		if selfLink == nil {
-			return c.errorHandler(fmt.Errorf("missing self link for item %d in %s", i, task.resource.String()))
+			unhandledErr := c.errorHandler(fmt.Errorf("missing self link for item %d in %s", i, task.resource.String()))
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 
 		selfLinkLoc, selfLinkErr := task.resource.Resolve(selfLink["href"])
 		if selfLinkErr != nil {
-			return c.errorHandler(selfLinkErr)
+			unhandledErr := c.errorHandler(selfLinkErr)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				continue
+			}
 		}
 
 		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
@@ -464,7 +535,7 @@ func (c *Crawler) crawlFeatures(task *Task) error {
 				// this is likely user error, may want to return the error here
 				continue
 			}
-			return err
+			return nil, err
 		}
 	}
 
@@ -472,13 +543,15 @@ func (c *Crawler) crawlFeatures(task *Task) error {
 	if nextLink != nil {
 		linkLoc, err := task.resource.Resolve(nextLink["href"])
 		if err != nil {
-			return c.errorHandler(err)
+			unhandledErr := c.errorHandler(err)
+			if unhandledErr != nil {
+				return nil, unhandledErr
+			} else {
+				return tasks, nil
+			}
 		}
-		addErr := c.queue.Add(task.new(linkLoc, featuresTask))
-		if addErr != nil {
-			return addErr
-		}
+		tasks = append(tasks, task.new(linkLoc, featuresTask))
 	}
 
-	return nil
+	return tasks, nil
 }

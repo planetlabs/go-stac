@@ -82,7 +82,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 type Handler func(task *Task) error
 
 type Queue interface {
-	Add(task *Task) error
+	Add(tasks []*Task) error
 	Handle(handler Handler)
 	Wait() error
 }
@@ -111,9 +111,9 @@ type memoryQueue struct {
 	handler Handler
 }
 
-func (q *memoryQueue) Add(task *Task) error {
+func (q *memoryQueue) Add(tasks []*Task) error {
 	q.mutex.Lock()
-	q.buffer = append(q.buffer, task)
+	q.buffer = append(q.buffer, tasks...)
 	q.mutex.Unlock()
 	q.process()
 	return nil
