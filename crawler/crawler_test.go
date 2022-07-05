@@ -20,11 +20,11 @@ func TestCrawler(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -51,11 +51,11 @@ func TestCrawlerFilterItem(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -84,11 +84,11 @@ func TestCrawlerFilterCollection(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -117,11 +117,11 @@ func TestCrawlerHTTP(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -157,11 +157,11 @@ func TestCrawlerHTTPRetry(t *testing.T) {
 
 	count := uint64(0)
 	visited := &sync.Map{}
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -178,11 +178,11 @@ func TestCrawlerSingle(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return crawler.ErrStopRecursion
 	}
@@ -198,11 +198,11 @@ func TestCrawlerCollection081(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, resource)
+		_, loaded := visited.LoadOrStore(info.Location, resource)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return crawler.ErrStopRecursion
 	}
@@ -229,11 +229,11 @@ func TestCrawlerChildren(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -247,11 +247,11 @@ func TestCrawlerCatalog(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -265,11 +265,11 @@ func TestCrawlerInvalidJSON(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -285,11 +285,11 @@ func TestCrawlerCatalogWithBadCollection(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -313,11 +313,11 @@ func TestCrawlerErrorHandler(t *testing.T) {
 		return nil
 	}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -348,11 +348,11 @@ func TestCrawlerAPI(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -380,11 +380,11 @@ func TestCrawlerAPICollection(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}
@@ -409,11 +409,11 @@ func TestCrawlerAPIChildren(t *testing.T) {
 	count := uint64(0)
 	visited := &sync.Map{}
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
-		_, loaded := visited.LoadOrStore(location, true)
+		_, loaded := visited.LoadOrStore(info.Location, true)
 		if loaded {
-			return fmt.Errorf("already visited %s", location)
+			return fmt.Errorf("already visited %s", info.Location)
 		}
 		return nil
 	}

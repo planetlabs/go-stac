@@ -73,7 +73,7 @@ var statsCommand = &cli.Command{
 		skip := ctx.Bool(flagExcludeEntry)
 		noRecursion := ctx.Bool(flagNoRecursion)
 
-		visitor := func(location string, resource crawler.Resource) error {
+		visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 			if skip {
 				skip = false
 				return nil

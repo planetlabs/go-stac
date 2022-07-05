@@ -101,11 +101,19 @@ func tryLoadUrl(loc *normurl.Locator, value any) error {
 	return nil
 }
 
+// ResourceInfo includes information about how the resource was accessed.
+type ResourceInfo struct {
+	// Location is the URL or file path of the resource.
+	Location string
+
+	// Entry is the URL or file path of the initial resource that was crawled and pointed to this resource.
+	Entry string
+}
+
 // Visitor is called for each resource during crawling.
 //
-// The resource location (URL or file path) is passed as the first argument.
 // Any returned error will stop crawling and be returned by Crawl.
-type Visitor func(string, Resource) error
+type Visitor func(Resource, *ResourceInfo) error
 
 // ErrorHandler is called with any errors during a crawl.  If the function
 // returns nil, the crawl will continue.  If the function returns an error,
@@ -279,7 +287,8 @@ func (c *Crawler) crawlResource(task *Task) ([]*Task, error) {
 		return nil, c.errorHandler(loadErr)
 	}
 
-	if err := c.errorHandler(c.visitor(task.resource.String(), resource)); err != nil {
+	info := &ResourceInfo{Entry: task.entry.String(), Location: task.resource.String()}
+	if err := c.errorHandler(c.visitor(resource, info)); err != nil {
 		if errors.Is(err, ErrStopRecursion) {
 			return nil, nil
 		}
@@ -384,7 +393,8 @@ func (c *Crawler) crawlCollections(task *Task) ([]*Task, error) {
 			}
 		}
 
-		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
+		info := &ResourceInfo{Entry: task.entry.String(), Location: selfLinkLoc.String()}
+		if err := c.errorHandler(c.visitor(resource, info)); err != nil {
 			if errors.Is(err, ErrStopRecursion) {
 				continue
 			}
@@ -530,7 +540,8 @@ func (c *Crawler) crawlFeatures(task *Task) ([]*Task, error) {
 			}
 		}
 
-		if err := c.errorHandler(c.visitor(selfLinkLoc.String(), resource)); err != nil {
+		info := &ResourceInfo{Entry: task.entry.String(), Location: selfLinkLoc.String()}
+		if err := c.errorHandler(c.visitor(resource, info)); err != nil {
 			if errors.Is(err, ErrStopRecursion) {
 				// this is likely user error, may want to return the error here
 				continue
