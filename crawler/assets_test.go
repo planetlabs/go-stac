@@ -12,7 +12,7 @@ import (
 func TestAssets(t *testing.T) {
 	count := uint64(0)
 
-	visitor := func(location string, resource crawler.Resource) error {
+	visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 		atomic.AddUint64(&count, 1)
 
 		assert.Equal(t, crawler.Item, resource.Type())

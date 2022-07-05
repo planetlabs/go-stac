@@ -149,8 +149,8 @@ var formatCommand = &cli.Command{
 
 		noRecursion := ctx.Bool(flagNoRecursion)
 
-		visitor := func(location string, resource crawler.Resource) error {
-			relDir, err := filepath.Rel(baseDir, path.Dir(location))
+		visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
+			relDir, err := filepath.Rel(baseDir, path.Dir(info.Location))
 			if err != nil {
 				return fmt.Errorf("failed to make relative path: %w", err)
 			}
@@ -163,9 +163,9 @@ var formatCommand = &cli.Command{
 
 			data, err := json.MarshalIndent(orderedMap(resource), "", "  ")
 			if err != nil {
-				return fmt.Errorf("failed to encode %s: %w", location, err)
+				return fmt.Errorf("failed to encode %s: %w", info.Location, err)
 			}
-			outFile := filepath.Join(outDir, path.Base(location))
+			outFile := filepath.Join(outDir, path.Base(info.Location))
 			if err := os.WriteFile(outFile, data, 0644); err != nil {
 				return fmt.Errorf("failed to write %s: %w", outFile, err)
 			}
