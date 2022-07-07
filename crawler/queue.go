@@ -32,6 +32,20 @@ type Task struct {
 	taskType taskType
 }
 
+func (t *Task) Entry() string {
+	if t.entry == nil {
+		return ""
+	}
+	return t.entry.String()
+}
+
+func (t *Task) Resource() string {
+	if t.resource == nil {
+		return ""
+	}
+	return t.resource.String()
+}
+
 func (t *Task) new(resource *normurl.Locator, taskType taskType) *Task {
 	return &Task{
 		entry:    t.entry,
