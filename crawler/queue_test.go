@@ -15,6 +15,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTaskDetail(t *testing.T) {
+	entry, entryErr := normurl.New("https://example.com/")
+	require.NoError(t, entryErr)
+
+	resource, resourceErr := normurl.New("https://example.com/resource")
+	require.NoError(t, resourceErr)
+
+	task := &Task{entry: entry, resource: resource, taskType: resourceTask}
+
+	assert.Equal(t, "https://example.com/", task.Entry())
+	assert.Equal(t, "https://example.com/resource", task.Resource())
+}
+
 func TestTaskMarshalJSON(t *testing.T) {
 	entry, entryErr := normurl.New("https://example.com/")
 	require.NoError(t, entryErr)
