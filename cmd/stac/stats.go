@@ -13,9 +13,9 @@ import (
 )
 
 type Stats struct {
-	Catalogs    *ResourceStats `json:"catalogs,omitempty"`
-	Collections *ResourceStats `json:"collections,omitempty"`
-	Items       *ResourceStats `json:"items,omitempty"`
+	Catalogs    *ResourceStats `json:"stats:catalogs,omitempty"`
+	Collections *ResourceStats `json:"stats:collections,omitempty"`
+	Items       *ResourceStats `json:"stats:items,omitempty"`
 }
 
 type ResourceStats struct {
