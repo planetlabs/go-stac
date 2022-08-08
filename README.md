@@ -39,13 +39,11 @@ Example use:
 
 The `--entry` can be a file path or URL pointing to a catalog, collection, or item.  The stats output is a JSON object with top-level properties for catalog, collection, and item stats.
 
-The structure of the output conforms with the schema of the [STAC Stats extension](https://github.com/stac-extensions/stats), so the results can be added to a STAC entrypoint to provide stats on child catalogs, collections, and items.  When generating output to be added to a catalog or collection, you don't want to include counts for the entrypoint itself in the reported statistics.  The `--exclude-entry` flag is used to report statistics on resources linked from the entry but not on the entry itself.
+The structure of the output conforms with the schema of the [STAC Stats extension](https://github.com/stac-extensions/stats), so the results can be added to a STAC entrypoint to provide stats on child catalogs, collections, and items.  The `stac stats` command can write out a copy of the provided entrypoint with statistics added.
 
-To generate statistics for the STAC Stats extension, run the following:
+To write out a version of a catalog or collection that includes metadata for the STAC Stats extension, run the following:
 
-    stac stats --entry path/to/catalog.json --exclude-entry
-
-Paste the resulting top-level `stats:*` prefixed properties into your `catalog.json` and add the extension identifier to your catalog's `stac_extensions` property as described by the [STAC Stats extension](https://github.com/stac-extensions/stats).
+    stac stats --entry path/to/catalog.json --output path/to/catalog-with-stats.json
 
 ## Library Use
 
