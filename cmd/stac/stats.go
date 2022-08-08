@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/go-github/v45/github"
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v2"
+)
+
+const (
+	statsRepoOwner = "stac-extensions"
+	statsRepoName  = "stats"
 )
 
 type Stats struct {
@@ -33,22 +40,35 @@ var statsCommand = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    flagEntry,
-			Usage:   "Path to STAC resource (catalog, collection, or item) to crawl",
+			Usage:   "Path or URL to STAC resource (catalog, collection, or item) to crawl",
 			EnvVars: []string{toEnvVar(flagEntry)},
 		},
-		&cli.BoolFlag{
-			Name:    flagExcludeEntry,
-			Usage:   "Do not count the entry itself",
-			Value:   false,
-			EnvVars: []string{toEnvVar(flagExcludeEntry)},
-		},
-		&cli.BoolFlag{
-			Name:    flagNoRecursion,
-			Usage:   "Visit a single resource",
-			EnvVars: []string{toEnvVar(flagNoRecursion)},
+		&cli.StringFlag{
+			Name:    flagOutput,
+			Usage:   "Path to write a version of the entry resource with statistics added (if not provided, stats will be written to stdout)",
+			EnvVars: []string{toEnvVar(flagOutput)},
 		},
 	},
 	Action: func(ctx *cli.Context) error {
+		rewriteWithStats := false
+
+		outputPath := ctx.String(flagOutput)
+		var entryResource crawler.Resource
+		var extensionReleaseTag string
+
+		if outputPath != "" {
+			client := github.NewClient(nil)
+			release, _, releaseErr := client.Repositories.GetLatestRelease(ctx.Context, statsRepoOwner, statsRepoName)
+			if releaseErr != nil {
+				return fmt.Errorf("failed to get latest release information for https://github.com/%s/%s: %w", statsRepoOwner, statsRepoName, releaseErr)
+			}
+			extensionReleaseTag = release.GetTagName()
+			if extensionReleaseTag == "" {
+				return fmt.Errorf("latest release for https://github.com/%s/%s has no version identifier", statsRepoOwner, statsRepoName)
+			}
+			rewriteWithStats = true
+		}
+
 		entryPath := ctx.String(flagEntry)
 		if entryPath == "" {
 			return fmt.Errorf("missing --%s", flagEntry)
@@ -70,11 +90,11 @@ var statsCommand = &cli.Command{
 			progressbar.OptionClearOnFinish(),
 		)
 
-		skip := ctx.Bool(flagExcludeEntry)
-		noRecursion := ctx.Bool(flagNoRecursion)
+		skip := rewriteWithStats
 
 		visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
 			if skip {
+				entryResource = resource
 				skip = false
 				return nil
 			}
@@ -148,10 +168,6 @@ var statsCommand = &cli.Command{
 			_ = bar.Add(1)
 			bar.Describe(fmt.Sprintf("catalogs: %d; collections: %d; items: %d", catalogs, collections, items))
 
-			if noRecursion {
-				return crawler.ErrStopRecursion
-			}
-
 			return nil
 		}
 
@@ -161,6 +177,36 @@ var statsCommand = &cli.Command{
 		}
 
 		_ = bar.Finish()
-		return json.NewEncoder(os.Stdout).Encode(stats)
+
+		if !rewriteWithStats {
+			return json.NewEncoder(os.Stdout).Encode(stats)
+		}
+
+		extensionSchemaRoot := fmt.Sprintf("https://%s.github.io/%s/", statsRepoOwner, statsRepoName)
+		extensions := []string{fmt.Sprintf("%s%s/schema.json", extensionSchemaRoot, extensionReleaseTag)}
+
+		for _, extension := range entryResource.Extensions() {
+			if strings.HasPrefix(extension, extensionSchemaRoot) {
+				continue
+			}
+			extensions = append(extensions, extension)
+		}
+
+		entryResource["stac_extensions"] = extensions
+		if stats.Catalogs != nil {
+			entryResource["stats:catalogs"] = stats.Catalogs
+		}
+		if stats.Collections != nil {
+			entryResource["stats:collections"] = stats.Collections
+		}
+		if stats.Items != nil {
+			entryResource["stats:items"] = stats.Items
+		}
+
+		data, jsonErr := json.MarshalIndent(orderedMap(entryResource), "", "  ")
+		if jsonErr != nil {
+			return fmt.Errorf("failed to encode resource as JSON: %w", jsonErr)
+		}
+		return os.WriteFile(outputPath, data, 0644)
 	},
 }

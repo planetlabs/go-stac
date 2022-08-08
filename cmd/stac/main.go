@@ -23,9 +23,6 @@ const (
 	// version flags
 	flagVerbose = "verbose"
 
-	// stats flags
-	flagExcludeEntry = "exclude-entry"
-
 	// common flags
 	flagLogLevel    = "log-level"
 	flagEntry       = "entry"
