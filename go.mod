@@ -9,7 +9,7 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	github.com/schollz/progressbar/v3 v3.8.7
+	github.com/schollz/progressbar/v3 v3.10.1
 	github.com/stretchr/testify v1.8.0
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.11.2
@@ -31,8 +31,8 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
+	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
