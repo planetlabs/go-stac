@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 
@@ -24,6 +25,7 @@ const (
 	flagVerbose = "verbose"
 
 	// common flags
+	flagPort        = "port"
 	flagLogLevel    = "log-level"
 	flagEntry       = "entry"
 	flagOutput      = "output"
@@ -99,6 +101,20 @@ func configureLogger(ctx *cli.Context) (*logr.Logger, func(), error) {
 	return &logger, sync, nil
 }
 
+func getFreePort() (int, error) {
+	address, resolveErr := net.ResolveTCPAddr("tcp", "localhost:0")
+	if resolveErr != nil {
+		return 0, resolveErr
+	}
+
+	listener, listenErr := net.ListenTCP("tcp", address)
+	if listenErr != nil {
+		return 0, listenErr
+	}
+	defer listener.Close()
+	return listener.Addr().(*net.TCPAddr).Port, nil
+}
+
 func main() {
 	app := &cli.App{
 		Name:        "stac",
@@ -107,6 +123,8 @@ func main() {
 		Commands: []*cli.Command{
 			validateCommand,
 			statsCommand,
+			proxyCommand,
+			viewCommand,
 			absoluteLinksCommand,
 			formatCommand,
 			versionCommand,

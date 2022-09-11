@@ -8,6 +8,7 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
+	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/schollz/progressbar/v3 v3.10.1
 	github.com/stretchr/testify v1.8.0
