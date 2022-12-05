@@ -12,7 +12,7 @@ require (
 	github.com/schollz/progressbar/v3 v3.12.1
 	github.com/stretchr/testify v1.8.1
 	github.com/tschaub/retry v1.0.0
-	github.com/urfave/cli/v2 v2.23.5
+	github.com/urfave/cli/v2 v2.23.6
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 )
