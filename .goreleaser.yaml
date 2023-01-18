@@ -34,3 +34,15 @@ snapshot:
 changelog:
   sort: asc
   use: github-native
+brews:
+  - tap:
+      owner: planetlabs
+      name: homebrew-tap
+    url_template: "https://github.com/planetlabs/{{ .ProjectName }}/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    folder: {{ .ProjectName }}
+    homepage: "https://github.com/planetlabs/go-stac"
+    description: "Utilities for working with Spatio-Temporal Asset Catalog (STAC) resources."
+    license: "Apache-2.0"
+    test: |
+      system "#{bin}/stac version"
