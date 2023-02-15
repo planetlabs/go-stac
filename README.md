@@ -13,7 +13,9 @@ The `stac` program can be installed by downloading one of the archives from [the
 
 Extract the archive and place the `stac` executable somewhere on your path.  See a list of available commands by running `stac` in your terminal.
 
-For Mac users, if you get a message that the program can't be opened because Apple cannot check it for malicious software, you can allow access in your system preferences.  Under the **Apple** menu > **Sytem Preferences**, click **Security & Privacy**, then click **General**.  There you should see an **Allow Anyway** button.
+Mac users can install the `stac` program with [`brew`](https://brew.sh/):
+
+    brew install planetlabs/tap/go-stac
 
 ### CLI Usage
 
