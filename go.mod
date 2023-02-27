@@ -14,7 +14,7 @@ require (
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.24.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
+	golang.org/x/sync v0.1.0
 )
 
 require (
