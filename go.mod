@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/schollz/progressbar/v3 v3.13.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.24.4
 	go.uber.org/zap v1.24.0
