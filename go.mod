@@ -1,6 +1,6 @@
 module github.com/planetlabs/go-stac
 
-go 1.18
+go 1.20
 
 require (
 	github.com/dlclark/regexp2 v1.8.1
@@ -8,11 +8,11 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
-	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/schollz/progressbar/v3 v3.13.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tschaub/retry v1.0.0
-	github.com/urfave/cli/v2 v2.24.4
+	github.com/urfave/cli/v2 v2.25.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.1.0
 )
@@ -30,10 +30,10 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/term v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/santhosh-tekuri/jsonschema/v5 v5.0.0 => github.com/tschaub/jsonschema/v5 v5.1.0-beta.1
+replace github.com/santhosh-tekuri/jsonschema/v5 v5.2.0 => github.com/tschaub/jsonschema/v5 v5.1.0-beta.1

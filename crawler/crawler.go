@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/rand"
 	"net/http"
@@ -45,7 +44,7 @@ func load(entry *normurl.Locator, loc *normurl.Locator, value interface{}) error
 }
 
 func loadFile(loc *normurl.Locator, value any) error {
-	data, readErr := ioutil.ReadFile(loc.String())
+	data, readErr := os.ReadFile(loc.String())
 	if readErr != nil {
 		return fmt.Errorf("failed to read file %s: %w", loc, readErr)
 	}
@@ -86,7 +85,7 @@ func tryLoadUrl(loc *normurl.Locator, value any) error {
 		return err
 	}
 	defer func() {
-		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
 	}()
 
