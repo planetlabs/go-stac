@@ -8,6 +8,7 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/schollz/progressbar/v3 v3.13.0
 	github.com/stretchr/testify v1.8.2
