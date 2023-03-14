@@ -25,7 +25,7 @@ type Item struct {
 	StripId            string   `json:"pl:strip_id,omitempty"`
 	BlackFill          *float64 `json:"pl:black_fill,omitempty"`
 	ClearPercent       *float64 `json:"pl:clear_percent,omitempty"`
-	GridCell           *int     `json:"pl:grid_cell,omitempty"`
+	GridCell           *string  `json:"pl:grid_cell,omitempty"`
 	GroundControl      *bool    `json:"pl:ground_control,omitempty"`
 	GroundControlRatio *float64 `json:"pl:ground_control_ratio,omitempty"`
 }
