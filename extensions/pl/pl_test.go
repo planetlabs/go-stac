@@ -89,3 +89,77 @@ func TestItemExtendedMarshal(t *testing.T) {
 
 	assert.JSONEq(t, expected, string(data))
 }
+
+func TestItemMarshalGridCell(t *testing.T) {
+	gridCell := "1259913"
+
+	item := &stac.Item{
+		Version: "1.0.0",
+		Id:      "item-id",
+		Geometry: map[string]any{
+			"type":        "Point",
+			"coordinates": []float64{0, 0},
+		},
+		Properties: map[string]any{
+			"test": "value",
+		},
+		Links: []*stac.Link{
+			{Href: "https://example.com/stac/item-id", Rel: "self"},
+		},
+		Assets: map[string]*stac.Asset{
+			"thumbnail": {
+				Title: "Thumbnail",
+				Href:  "https://example.com/stac/item-id/thumb.png",
+				Type:  "image/png",
+				Extensions: []stac.AssetExtension{
+					&pl.Asset{
+						AssetType: "visual",
+					},
+				},
+			},
+		},
+		Extensions: []stac.ItemExtension{
+			&pl.Item{
+				ItemType: "REOrthoTile",
+				GridCell: &gridCell,
+			},
+		},
+	}
+
+	data, err := json.Marshal(item)
+	require.Nil(t, err)
+
+	expected := `{
+		"type": "Feature",
+		"stac_version": "1.0.0",
+		"id": "item-id",
+		"geometry": {
+			"type": "Point",
+			"coordinates": [0, 0]
+		},
+		"properties": {
+			"test": "value",
+			"pl:item_type": "REOrthoTile",
+			"pl:grid_cell": "1259913"
+		},
+		"links": [
+			{
+				"rel": "self",
+				"href": "https://example.com/stac/item-id"
+			}
+		],
+		"assets": {
+			"thumbnail": {
+				"title": "Thumbnail",
+				"href": "https://example.com/stac/item-id/thumb.png",
+				"type": "image/png",
+				"pl:asset_type": "visual"
+			}
+		},
+		"stac_extensions": [
+			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.1/schema.json"
+		]
+	}`
+
+	assert.JSONEq(t, expected, string(data))
+}
