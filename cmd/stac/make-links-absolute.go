@@ -63,12 +63,17 @@ var absoluteLinksCommand = &cli.Command{
 		noRecursion := ctx.Bool(flagNoRecursion)
 
 		visitor := func(resource crawler.Resource, info *crawler.ResourceInfo) error {
+			absResource := crawler.Resource{}
+			for key, value := range resource {
+				absResource[key] = value
+			}
+
 			relDir, err := filepath.Rel(baseDir, path.Dir(info.Location))
 			if err != nil {
 				return fmt.Errorf("failed to make relative path: %w", err)
 			}
 
-			links := resource.Links()
+			links := absResource.Links()
 			for _, link := range links {
 				relUrl, err := url.Parse(link["href"])
 				if err != nil {
@@ -77,7 +82,7 @@ var absoluteLinksCommand = &cli.Command{
 				absUrl := makeAbsolute(relUrl, filepath.ToSlash(relDir), baseUrl)
 				link["href"] = absUrl.String()
 			}
-			resource["links"] = links
+			absResource["links"] = links
 
 			outDir := filepath.Join(outputPath, relDir)
 			mkdirErr := os.MkdirAll(outDir, 0755)
@@ -85,7 +90,7 @@ var absoluteLinksCommand = &cli.Command{
 				return fmt.Errorf("failed to create output directory: %w", mkdirErr)
 			}
 
-			data, err := json.MarshalIndent(resource, "", "  ")
+			data, err := json.MarshalIndent(absResource, "", "  ")
 			if err != nil {
 				return fmt.Errorf("failed to encode %s: %w", info.Location, err)
 			}
