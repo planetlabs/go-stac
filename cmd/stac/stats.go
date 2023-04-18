@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v51/github"
 	"github.com/planetlabs/go-stac/crawler"
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v2"
