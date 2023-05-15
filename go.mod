@@ -3,7 +3,7 @@ module github.com/planetlabs/go-stac
 go 1.20
 
 require (
-	github.com/dlclark/regexp2 v1.9.0
+	github.com/dlclark/regexp2 v1.10.0
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
 	github.com/google/go-github/v51 v51.0.0
