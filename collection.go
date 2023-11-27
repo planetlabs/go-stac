@@ -2,6 +2,8 @@ package stac
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -18,6 +20,22 @@ type Collection struct {
 	Summaries   map[string]any    `json:"summaries,omitempty"`
 	Links       []*Link           `json:"links"`
 	Assets      map[string]*Asset `json:"assets,omitempty"`
+	Extensions  []Extension       `json:"-"`
+}
+
+var (
+	_ json.Marshaler   = (*Collection)(nil)
+	_ json.Unmarshaler = (*Collection)(nil)
+)
+
+var collectionExtensions = newExtensionRegistry()
+
+func RegisterCollectionExtension(pattern *regexp.Regexp, provider ExtensionProvider) {
+	collectionExtensions.register(pattern, provider)
+}
+
+func GetCollectionExtension(uri string) Extension {
+	return collectionExtensions.get(uri)
 }
 
 type Provider struct {
@@ -40,8 +58,6 @@ type TemporalExtent struct {
 	Interval [][]any `json:"interval"`
 }
 
-var _ json.Marshaler = (*Collection)(nil)
-
 func (collection Collection) MarshalJSON() ([]byte, error) {
 	collectionMap := map[string]any{
 		"type": "Collection",
@@ -59,7 +75,64 @@ func (collection Collection) MarshalJSON() ([]byte, error) {
 		return nil, decodeErr
 	}
 
+	extensionUris := []string{}
+	lookup := map[string]bool{}
+
+	for _, extension := range collection.Extensions {
+		if err := extension.Encode(collectionMap); err != nil {
+			return nil, err
+		}
+		uris, err := GetExtensionUris(collectionMap)
+		if err != nil {
+			return nil, err
+		}
+		uris = append(uris, extension.URI())
+		for _, uri := range uris {
+			if !lookup[uri] {
+				extensionUris = append(extensionUris, uri)
+				lookup[uri] = true
+			}
+		}
+	}
+
+	SetExtensionUris(collectionMap, extensionUris)
 	return json.Marshal(collectionMap)
+}
+
+func (collection *Collection) UnmarshalJSON(data []byte) error {
+	collectionMap := map[string]any{}
+	if err := json.Unmarshal(data, &collectionMap); err != nil {
+		return err
+	}
+
+	decoder, decoderErr := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  collection,
+	})
+	if decoderErr != nil {
+		return decoderErr
+	}
+
+	if err := decoder.Decode(collectionMap); err != nil {
+		return err
+	}
+
+	extensionUris, extensionErr := GetExtensionUris(collectionMap)
+	if extensionErr != nil {
+		return extensionErr
+	}
+	for _, uri := range extensionUris {
+		extension := GetCollectionExtension(uri)
+		if extension == nil {
+			continue
+		}
+		if err := extension.Decode(collectionMap); err != nil {
+			return fmt.Errorf("decoding error for %s: %w", uri, err)
+		}
+		collection.Extensions = append(collection.Extensions, extension)
+	}
+
+	return nil
 }
 
 type CollectionsList struct {

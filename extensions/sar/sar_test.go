@@ -31,7 +31,7 @@ func TestItemExtendedMarshal(t *testing.T) {
 				Type:  "image/png",
 			},
 		},
-		Extensions: []stac.ItemExtension{
+		Extensions: []stac.Extension{
 			&sar.Item{
 				InstrumentMode: "IW",
 				FrequencyBand:  "C",
@@ -42,7 +42,7 @@ func TestItemExtendedMarshal(t *testing.T) {
 	}
 
 	data, err := json.Marshal(item)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	expected := `{
 		"type": "Feature",
@@ -110,7 +110,7 @@ func TestItemExtendedMarshalOptional(t *testing.T) {
 				Type:  "image/png",
 			},
 		},
-		Extensions: []stac.ItemExtension{
+		Extensions: []stac.Extension{
 			&sar.Item{
 				InstrumentMode:        "IW",
 				FrequencyBand:         "C",
@@ -173,4 +173,74 @@ func TestItemExtendedMarshalOptional(t *testing.T) {
 	}`
 
 	assert.JSONEq(t, expected, string(data))
+}
+
+func TestItemExtendedUnmarshal(t *testing.T) {
+	data := []byte(`{
+		"type": "Feature",
+		"stac_version": "1.0.0",
+		"id": "item-id",
+		"geometry": {
+			"type": "Point",
+			"coordinates": [0, 0]
+		},
+		"properties": {
+			"test": "value",
+			"sar:instrument_mode": "IW",
+			"sar:frequency_band": "C",
+			"sar:product_type": "GRD",
+			"sar:polarizations": ["VV", "VH"]
+		},
+		"links": [
+			{
+				"rel": "self",
+				"href": "https://example.com/stac/item-id"
+			}
+		],
+		"assets": {
+			"thumbnail": {
+				"title": "Thumbnail",
+				"href": "https://example.com/stac/item-id/thumb.png",
+				"type": "image/png"
+			}
+		},
+		"stac_extensions": [
+			"https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+		]
+	}`)
+
+	item := &stac.Item{}
+	require.NoError(t, json.Unmarshal(data, item))
+
+	expected := &stac.Item{
+		Version: "1.0.0",
+		Id:      "item-id",
+		Geometry: map[string]any{
+			"type":        "Point",
+			"coordinates": []any{float64(0), float64(0)},
+		},
+		Properties: map[string]any{
+			"test": "value",
+		},
+		Links: []*stac.Link{
+			{Href: "https://example.com/stac/item-id", Rel: "self"},
+		},
+		Assets: map[string]*stac.Asset{
+			"thumbnail": {
+				Title: "Thumbnail",
+				Href:  "https://example.com/stac/item-id/thumb.png",
+				Type:  "image/png",
+			},
+		},
+		Extensions: []stac.Extension{
+			&sar.Item{
+				InstrumentMode: "IW",
+				FrequencyBand:  "C",
+				Polarizations:  []string{"VV", "VH"},
+				ProductType:    "GRD",
+			},
+		},
+	}
+
+	assert.Equal(t, expected, item)
 }
