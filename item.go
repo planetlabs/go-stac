@@ -3,6 +3,7 @@ package stac
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -30,17 +31,25 @@ type Item struct {
 	Links      []*Link           `json:"links"`
 	Assets     map[string]*Asset `json:"assets"`
 	Collection string            `json:"collection,omitempty"`
-	Extensions []ItemExtension   `json:"-"`
+	Extensions []Extension       `json:"-"`
 }
 
-var _ json.Marshaler = (*Item)(nil)
+var (
+	_ json.Marshaler   = (*Item)(nil)
+	_ json.Unmarshaler = (*Item)(nil)
+)
 
-type ItemExtension interface {
-	Apply(*Item)
-	URI() string
+var itemExtensions = newExtensionRegistry()
+
+func RegisterItemExtension(pattern *regexp.Regexp, provider ExtensionProvider) {
+	itemExtensions.register(pattern, provider)
 }
 
-func PopulateExtensionFromProperties(extension ItemExtension, properties map[string]any) error {
+func GetItemExtension(uri string) Extension {
+	return itemExtensions.get(uri)
+}
+
+func PopulateExtensionFromProperties(extension Extension, properties map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
 		Result:  extension,
@@ -67,45 +76,98 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		return nil, decodeErr
 	}
 
-	propDecoder, propDecoderErr := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &item.Properties,
-	})
-	if propDecoderErr != nil {
-		return nil, propDecoderErr
+	assetsMap, assetExtensionUris, err := EncodeAssets(item.Assets)
+	if err != nil {
+		return nil, err
 	}
+	itemMap["assets"] = assetsMap
 
 	extensionUris := []string{}
 	lookup := map[string]bool{}
 
-	for _, asset := range item.Assets {
-		for _, extension := range asset.Extensions {
-			uri := extension.URI()
-			if !lookup[uri] {
-				extensionUris = append(extensionUris, uri)
-				lookup[uri] = true
-			}
+	for _, uri := range assetExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
 		}
 	}
 
 	for _, extension := range item.Extensions {
-		extension.Apply(&item)
+		if err := extension.Encode(itemMap); err != nil {
+			return nil, err
+		}
 		uri := extension.URI()
 		if !lookup[uri] {
 			extensionUris = append(extensionUris, uri)
 			lookup[uri] = true
 		}
+	}
 
-		if decodeErr := propDecoder.Decode(extension); decodeErr != nil {
-			return nil, fmt.Errorf("trouble encoding JSON for %s item properties: %w", uri, decodeErr)
+	SetExtensionUris(itemMap, extensionUris)
+
+	return json.Marshal(itemMap)
+}
+
+func (item *Item) UnmarshalJSON(data []byte) error {
+	itemMap := map[string]any{}
+	if err := json.Unmarshal(data, &itemMap); err != nil {
+		return err
+	}
+
+	extensionUris, extensionErr := GetExtensionUris(itemMap)
+	if extensionErr != nil {
+		return extensionErr
+	}
+	for _, uri := range extensionUris {
+		extension := GetItemExtension(uri)
+		if extension == nil {
+			continue
+		}
+		if err := extension.Decode(itemMap); err != nil {
+			return fmt.Errorf("decoding error for %s: %w", uri, err)
+		}
+		item.Extensions = append(item.Extensions, extension)
+	}
+
+	decoder, decoderErr := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  item,
+	})
+	if decoderErr != nil {
+		return decoderErr
+	}
+
+	if err := decoder.Decode(itemMap); err != nil {
+		return err
+	}
+
+	assetsValue, ok := itemMap["assets"]
+	if !ok {
+		return nil
+	}
+	assetsMap, ok := assetsValue.(map[string]any)
+	if !ok {
+		return fmt.Errorf("unexpected type for assets: %t", assetsValue)
+	}
+
+	for key, asset := range item.Assets {
+		for _, uri := range extensionUris {
+			extension := GetAssetExtension(uri)
+			if extension == nil {
+				continue
+			}
+			assetMap, ok := assetsMap[key].(map[string]any)
+			if !ok {
+				return fmt.Errorf("unexpected type for %q asset: %t", key, assetsMap[key])
+			}
+			if err := extension.Decode(assetMap); err != nil {
+				return fmt.Errorf("decoding error for %s: %w", uri, err)
+			}
+			asset.Extensions = append(asset.Extensions, extension)
 		}
 	}
 
-	if len(extensionUris) > 0 {
-		itemMap["stac_extensions"] = extensionUris
-	}
-
-	return json.Marshal(itemMap)
+	return nil
 }
 
 type ItemsList struct {

@@ -1,50 +1,53 @@
 package stac
 
 import (
-	"encoding/json"
-	"fmt"
+	"regexp"
 
 	"github.com/mitchellh/mapstructure"
 )
 
 type Asset struct {
-	Type        string           `json:"type,omitempty"`
-	Href        string           `json:"href"`
-	Title       string           `json:"title,omitempty"`
-	Description string           `json:"description,omitempty"`
-	Created     string           `json:"created,omitempty"`
-	Roles       []string         `json:"roles,omitempty"`
-	Extensions  []AssetExtension `json:"-"`
+	Type        string      `json:"type,omitempty"`
+	Href        string      `json:"href,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Created     string      `json:"created,omitempty"`
+	Roles       []string    `json:"roles,omitempty"`
+	Extensions  []Extension `json:"-"`
 }
 
-var _ json.Marshaler = (*Asset)(nil)
+var assetExtensions = newExtensionRegistry()
 
-type AssetExtension interface {
-	Apply(*Asset)
-	URI() string
+func RegisterAssetExtension(pattern *regexp.Regexp, provider ExtensionProvider) {
+	assetExtensions.register(pattern, provider)
 }
 
-func (asset Asset) MarshalJSON() ([]byte, error) {
-	assetMap := map[string]any{}
-	decoder, decoderErr := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &assetMap,
-	})
-	if decoderErr != nil {
-		return nil, decoderErr
-	}
+func GetAssetExtension(uri string) Extension {
+	return assetExtensions.get(uri)
+}
 
-	decodeErr := decoder.Decode(asset)
-	if decodeErr != nil {
-		return nil, decodeErr
-	}
-
-	for _, extension := range asset.Extensions {
-		extension.Apply(&asset)
-		if decodeErr := decoder.Decode(extension); decodeErr != nil {
-			return nil, fmt.Errorf("trouble encoding JSON for %s asset: %w", extension.URI(), decodeErr)
+func EncodeAssets(assets map[string]*Asset) (map[string]any, []string, error) {
+	assetsMap := map[string]any{}
+	extensionUris := []string{}
+	for key, asset := range assets {
+		assetMap := map[string]any{}
+		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			TagName: "json",
+			Result:  &assetMap,
+		})
+		if err != nil {
+			return nil, nil, err
 		}
+		if err := decoder.Decode(asset); err != nil {
+			return nil, nil, err
+		}
+		for _, extension := range asset.Extensions {
+			extensionUris = append(extensionUris, extension.URI())
+			if err := extension.Encode(assetMap); err != nil {
+				return nil, nil, err
+			}
+		}
+		assetsMap[key] = assetMap
 	}
-
-	return json.Marshal(assetMap)
+	return assetsMap, extensionUris, nil
 }

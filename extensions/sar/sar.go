@@ -1,8 +1,24 @@
 package sar
 
-import "github.com/planetlabs/go-stac"
+import (
+	"regexp"
 
-const extensionUri = "https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+	"github.com/planetlabs/go-stac"
+)
+
+const (
+	extensionUri     = "https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+	extensionPattern = `https://stac-extensions.github.io/sar/v1\..*/schema.json`
+)
+
+func init() {
+	stac.RegisterItemExtension(
+		regexp.MustCompile(extensionPattern),
+		func() stac.Extension {
+			return &Item{}
+		},
+	)
+}
 
 type Item struct {
 	InstrumentMode        string   `json:"sar:instrument_mode"`
@@ -20,10 +36,16 @@ type Item struct {
 	ObservationDirection  *string  `json:"sar:observation_direction,omitempty"`
 }
 
-var _ stac.ItemExtension = (*Item)(nil)
+var _ stac.Extension = (*Item)(nil)
 
 func (*Item) URI() string {
 	return extensionUri
 }
 
-func (*Item) Apply(*stac.Item) {}
+func (e *Item) Encode(itemMap map[string]any) error {
+	return stac.EncodeExtendedItemProperties(e, itemMap)
+}
+
+func (e *Item) Decode(itemMap map[string]any) error {
+	return stac.DecodeExtendedItemProperties(e, itemMap)
+}
