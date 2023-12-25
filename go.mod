@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/dlclark/regexp2 v1.10.0
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-github/v51 v51.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
