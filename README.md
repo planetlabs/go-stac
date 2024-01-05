@@ -57,3 +57,7 @@ go get github.com/planetlabs/go-stac
 ```
 
 See the [reference documentation](https://pkg.go.dev/github.com/planetlabs/go-stac) for example usage in a Golang project.
+
+## Development
+
+See the [development doc](./development.md) for information on developing and releasing the `go-stac` library.
