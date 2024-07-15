@@ -197,6 +197,9 @@ func (v *Validator) validate(resource crawler.Resource, info *crawler.ResourceIn
 		}
 		extensionErr := extensionSchema.Validate(map[string]interface{}(resource))
 		if extensionErr != nil {
+			if err, ok := extensionErr.(*jsonschema.ValidationError); ok {
+				return newValidationError(info.Location, resource, err)
+			}
 			return extensionErr
 		}
 	}
