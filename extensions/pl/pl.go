@@ -38,11 +38,11 @@ func (*Asset) URI() string {
 }
 
 func (e *Asset) Encode(assetMap map[string]any) error {
-	return stac.EncodeExtendedAsset(e, assetMap)
+	return stac.EncodeExtendedMap(e, assetMap)
 }
 
 func (e *Asset) Decode(assetMap map[string]any) error {
-	return stac.DecodeExtendedAsset(e, assetMap)
+	return stac.DecodeExtendedMap(e, assetMap)
 }
 
 type Item struct {
