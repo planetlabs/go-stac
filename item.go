@@ -76,16 +76,29 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		return nil, decodeErr
 	}
 
+	extensionUris := []string{}
+	lookup := map[string]bool{}
+
 	assetsMap, assetExtensionUris, err := EncodeAssets(item.Assets)
 	if err != nil {
 		return nil, err
 	}
 	itemMap["assets"] = assetsMap
 
-	extensionUris := []string{}
-	lookup := map[string]bool{}
-
 	for _, uri := range assetExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
+		}
+	}
+
+	links, linkExtensionUris, err := EncodeLinks(item.Links)
+	if err != nil {
+		return nil, err
+	}
+	itemMap["links"] = links
+
+	for _, uri := range linkExtensionUris {
 		if !lookup[uri] {
 			extensionUris = append(extensionUris, uri)
 			lookup[uri] = true
@@ -141,30 +154,12 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	assetsValue, ok := itemMap["assets"]
-	if !ok {
-		return nil
-	}
-	assetsMap, ok := assetsValue.(map[string]any)
-	if !ok {
-		return fmt.Errorf("unexpected type for assets: %t", assetsValue)
+	if err := decodeExtendedAssets(itemMap, item.Assets, extensionUris); err != nil {
+		return err
 	}
 
-	for key, asset := range item.Assets {
-		for _, uri := range extensionUris {
-			extension := GetAssetExtension(uri)
-			if extension == nil {
-				continue
-			}
-			assetMap, ok := assetsMap[key].(map[string]any)
-			if !ok {
-				return fmt.Errorf("unexpected type for %q asset: %t", key, assetsMap[key])
-			}
-			if err := extension.Decode(assetMap); err != nil {
-				return fmt.Errorf("decoding error for %s: %w", uri, err)
-			}
-			asset.Extensions = append(asset.Extensions, extension)
-		}
+	if err := decodeExtendedLinks(itemMap, item.Links, extensionUris); err != nil {
+		return err
 	}
 
 	return nil

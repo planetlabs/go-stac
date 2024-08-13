@@ -34,12 +34,12 @@ func GetCatalogExtension(uri string) Extension {
 }
 
 func (catalog Catalog) MarshalJSON() ([]byte, error) {
-	collectionMap := map[string]any{
+	catalogMap := map[string]any{
 		"type": "Catalog",
 	}
 	decoder, decoderErr := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
-		Result:  &collectionMap,
+		Result:  &catalogMap,
 	})
 	if decoderErr != nil {
 		return nil, decoderErr
@@ -54,10 +54,10 @@ func (catalog Catalog) MarshalJSON() ([]byte, error) {
 	lookup := map[string]bool{}
 
 	for _, extension := range catalog.Extensions {
-		if err := extension.Encode(collectionMap); err != nil {
+		if err := extension.Encode(catalogMap); err != nil {
 			return nil, err
 		}
-		uris, err := GetExtensionUris(collectionMap)
+		uris, err := GetExtensionUris(catalogMap)
 		if err != nil {
 			return nil, err
 		}
@@ -70,13 +70,26 @@ func (catalog Catalog) MarshalJSON() ([]byte, error) {
 		}
 	}
 
-	SetExtensionUris(collectionMap, extensionUris)
-	return json.Marshal(collectionMap)
+	links, linkExtensionUris, err := EncodeLinks(catalog.Links)
+	if err != nil {
+		return nil, err
+	}
+	catalogMap["links"] = links
+
+	for _, uri := range linkExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
+		}
+	}
+
+	SetExtensionUris(catalogMap, extensionUris)
+	return json.Marshal(catalogMap)
 }
 
 func (catalog *Catalog) UnmarshalJSON(data []byte) error {
-	collectionMap := map[string]any{}
-	if err := json.Unmarshal(data, &collectionMap); err != nil {
+	catalogMap := map[string]any{}
+	if err := json.Unmarshal(data, &catalogMap); err != nil {
 		return err
 	}
 
@@ -88,11 +101,11 @@ func (catalog *Catalog) UnmarshalJSON(data []byte) error {
 		return decoderErr
 	}
 
-	if err := decoder.Decode(collectionMap); err != nil {
+	if err := decoder.Decode(catalogMap); err != nil {
 		return err
 	}
 
-	extensionUris, err := GetExtensionUris(collectionMap)
+	extensionUris, err := GetExtensionUris(catalogMap)
 	if err != nil {
 		return err
 	}
@@ -102,10 +115,14 @@ func (catalog *Catalog) UnmarshalJSON(data []byte) error {
 		if extension == nil {
 			continue
 		}
-		if err := extension.Decode(collectionMap); err != nil {
+		if err := extension.Decode(catalogMap); err != nil {
 			return fmt.Errorf("decoding error for %s: %w", uri, err)
 		}
 		catalog.Extensions = append(catalog.Extensions, extension)
+	}
+
+	if err := decodeExtendedLinks(catalogMap, catalog.Links, extensionUris); err != nil {
+		return err
 	}
 
 	return nil

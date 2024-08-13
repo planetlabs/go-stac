@@ -1,6 +1,7 @@
 package stac
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -141,24 +142,93 @@ func DecodeExtendedItemProperties(itemExtension Extension, itemMap map[string]an
 	return nil
 }
 
-func EncodeExtendedAsset(assetExtension Extension, assetMap map[string]any) error {
+func EncodeExtendedMap(extension Extension, data map[string]any) error {
 	encoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
-		Result:  &assetMap,
+		Result:  &data,
 	})
 	if err != nil {
 		return err
 	}
-	return encoder.Decode(assetExtension)
+	return encoder.Decode(extension)
 }
 
-func DecodeExtendedAsset(assetExtension Extension, assetMap map[string]any) error {
+func DecodeExtendedMap(extension Extension, data map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
-		Result:  assetExtension,
+		Result:  extension,
 	})
 	if err != nil {
 		return err
 	}
-	return decoder.Decode(assetMap)
+	return decoder.Decode(data)
 }
+
+func decodeExtendedLinks(data map[string]any, links []*Link, extensionUris []string) error {
+	linksValue, ok := data["links"]
+	if !ok {
+		return nil
+	}
+	linksData, ok := linksValue.([]any)
+	if !ok {
+		return fmt.Errorf("unexpected type for links: %t", linksValue)
+	}
+
+	for i, link := range links {
+		for _, uri := range extensionUris {
+			extension := GetLinkExtension(uri)
+			if extension == nil {
+				continue
+			}
+			linkMap, ok := linksData[i].(map[string]any)
+			if !ok {
+				return fmt.Errorf("unexpected type for %q link: %t", i, linksData[i])
+			}
+			if err := extension.Decode(linkMap); err != nil {
+				if errors.Is(err, ErrExtensionDoesNotApply) {
+					continue
+				}
+				return fmt.Errorf("decoding error for %s: %w", uri, err)
+			}
+			link.Extensions = append(link.Extensions, extension)
+		}
+	}
+
+	return nil
+}
+
+func decodeExtendedAssets(data map[string]any, assets map[string]*Asset, extensionUris []string) error {
+	assetsValue, ok := data["assets"]
+	if !ok {
+		return nil
+	}
+	assetsMap, ok := assetsValue.(map[string]any)
+	if !ok {
+		return fmt.Errorf("unexpected type for assets: %t", assetsValue)
+	}
+
+	for key, asset := range assets {
+		for _, uri := range extensionUris {
+			extension := GetAssetExtension(uri)
+			if extension == nil {
+				continue
+			}
+			assetMap, ok := assetsMap[key].(map[string]any)
+			if !ok {
+				return fmt.Errorf("unexpected type for %q asset: %t", key, assetsMap[key])
+			}
+			if err := extension.Decode(assetMap); err != nil {
+				if errors.Is(err, ErrExtensionDoesNotApply) {
+					continue
+				}
+				return fmt.Errorf("decoding error for %s: %w", uri, err)
+			}
+			asset.Extensions = append(asset.Extensions, extension)
+		}
+	}
+
+	return nil
+}
+
+// ErrExtensionDoesNotApply is returned when decoding JSON and an extension referenced in stac_extensions does not apply to a value.
+var ErrExtensionDoesNotApply = errors.New("extension does not apply")

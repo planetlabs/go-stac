@@ -95,6 +95,19 @@ func (collection Collection) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	links, linkExtensionUris, err := EncodeLinks(collection.Links)
+	if err != nil {
+		return nil, err
+	}
+	collectionMap["links"] = links
+
+	for _, uri := range linkExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
+		}
+	}
+
 	SetExtensionUris(collectionMap, extensionUris)
 	return json.Marshal(collectionMap)
 }
@@ -130,6 +143,10 @@ func (collection *Collection) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("decoding error for %s: %w", uri, err)
 		}
 		collection.Extensions = append(collection.Extensions, extension)
+	}
+
+	if err := decodeExtendedLinks(collectionMap, collection.Links, extensionUris); err != nil {
+		return err
 	}
 
 	return nil
