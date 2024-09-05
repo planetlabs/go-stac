@@ -124,7 +124,7 @@ func TestAssetExtendedMarshal(t *testing.T) {
 			}
 		},
 		"stac_extensions": [
-			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.1/schema.json"
+			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 		]
 	}`
 
