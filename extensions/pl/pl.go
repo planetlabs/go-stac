@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	extensionUri     = "https://planetlabs.github.io/stac-extension/v1.0.0-beta.1/schema.json"
+	extensionUri     = "https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 	extensionPattern = `https://planetlabs.github.io/stac-extension/v1\..*/schema.json`
 )
 
