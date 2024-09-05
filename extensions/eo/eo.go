@@ -18,12 +18,42 @@ func init() {
 			return &Asset{}
 		},
 	)
+
+	stac.RegisterItemExtension(
+		regexp.MustCompile(extensionPattern),
+		func() stac.Extension {
+			return &Item{}
+		},
+	)
+}
+
+type Item struct {
+	CloudCover *float64 `json:"eo:cloud_cover,omitempty"`
+	SnowCover  *float64 `json:"eo:snow_cover,omitempty"`
+}
+
+var _ stac.Extension = (*Item)(nil)
+
+func (*Item) URI() string {
+	return extensionUri
+}
+
+func (e *Item) Encode(itemMap map[string]any) error {
+	return stac.EncodeExtendedItemProperties(e, itemMap)
+}
+
+func (e *Item) Decode(itemMap map[string]any) error {
+	if err := stac.DecodeExtendedItemProperties(e, itemMap); err != nil {
+		return err
+	}
+	if e.CloudCover == nil && e.SnowCover == nil {
+		return stac.ErrExtensionDoesNotApply
+	}
+	return nil
 }
 
 type Asset struct {
-	CloudCover *float64 `json:"eo:cloud_cover,omitempty"`
-	SnowCover  *float64 `json:"eo:snow_cover,omitempty"`
-	Bands      []*Band  `json:"eo:bands,omitempty"`
+	Bands []*Band `json:"eo:bands,omitempty"`
 }
 
 type Band struct {
@@ -46,5 +76,11 @@ func (e *Asset) Encode(assetMap map[string]any) error {
 }
 
 func (e *Asset) Decode(assetMap map[string]any) error {
-	return stac.DecodeExtendedMap(e, assetMap)
+	if err := stac.DecodeExtendedMap(e, assetMap); err != nil {
+		return err
+	}
+	if len(e.Bands) == 0 {
+		return stac.ErrExtensionDoesNotApply
+	}
+	return nil
 }
