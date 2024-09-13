@@ -18,10 +18,35 @@ const (
 func init() {
 	r := regexp.MustCompile(extensionPattern)
 
+	stac.RegisterItemExtension(r, func() stac.Extension { return &Item{} })
 	stac.RegisterCollectionExtension(r, func() stac.Extension { return &Collection{} })
 	stac.RegisterCatalogExtension(r, func() stac.Extension { return &Catalog{} })
 	stac.RegisterAssetExtension(r, func() stac.Extension { return &Asset{} })
 	stac.RegisterLinkExtension(r, func() stac.Extension { return &Link{} })
+}
+
+type Item struct {
+	Schemes map[string]*Scheme `json:"auth:schemes,omitempty"`
+}
+
+var _ stac.Extension = (*Item)(nil)
+
+func (*Item) URI() string {
+	return extensionUri
+}
+
+func (e *Item) Encode(itemMap map[string]any) error {
+	return stac.EncodeExtendedItemProperties(e, itemMap)
+}
+
+func (e *Item) Decode(itemMap map[string]any) error {
+	if err := stac.DecodeExtendedItemProperties(e, itemMap); err != nil {
+		return err
+	}
+	if e.Schemes == nil {
+		return stac.ErrExtensionDoesNotApply
+	}
+	return nil
 }
 
 type Collection struct {

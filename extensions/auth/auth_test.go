@@ -10,6 +10,88 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestItemExtendedMarshal(t *testing.T) {
+	item := &stac.Item{
+		Version: "1.0.0",
+		Id:      "item-id",
+		Geometry: map[string]any{
+			"type":        "Point",
+			"coordinates": []float64{0, 0},
+		},
+		Properties: map[string]any{
+			"test": "value",
+		},
+		Links: []*stac.Link{
+			{Href: "https://example.com/stac/item-id", Rel: "self"},
+		},
+		Assets: map[string]*stac.Asset{
+			"image": {
+				Title: "Image",
+				Href:  "https://example.com/stac/item-id/image.tif",
+				Type:  "image/tif",
+				Extensions: []stac.Extension{
+					&auth.Asset{
+						Refs: []string{"openid"},
+					},
+				},
+			},
+		},
+		Extensions: []stac.Extension{
+			&auth.Item{
+				Schemes: map[string]*auth.Scheme{
+					"openid": {
+						Type:             "openIdConnect",
+						Description:      "Test auth configuration",
+						OpenIdConnectUrl: "https://example.com/auth/.well-known/openid-configuration",
+					},
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	expected := `{
+		"type": "Feature",
+		"stac_version": "1.0.0",
+		"id": "item-id",
+		"geometry": {
+			"type": "Point",
+			"coordinates": [0, 0]
+		},
+		"properties": {
+			"test": "value",
+			"auth:schemes": {
+				"openid": {
+					"type": "openIdConnect",
+					"description": "Test auth configuration",
+					"openIdConnectUrl": "https://example.com/auth/.well-known/openid-configuration"
+				}
+			}
+		},
+		"links": [
+			{
+				"rel": "self",
+				"href": "https://example.com/stac/item-id"
+			}
+		],
+		"assets": {
+			"image": {
+				"title": "Image",
+				"href": "https://example.com/stac/item-id/image.tif",
+				"type": "image/tif",
+				"auth:refs": ["openid"]
+			}
+		},
+		"stac_extensions": [
+			"https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+		]
+	}`
+
+	assert.JSONEq(t, expected, string(data))
+}
+
 func TestCollectionExtendedMarshal(t *testing.T) {
 	collection := &stac.Collection{
 		Version:     "1.0.0",
@@ -148,6 +230,88 @@ func TestCollectionLinkExtendedMarshal(t *testing.T) {
 	}`
 
 	assert.JSONEq(t, expected, string(data))
+}
+
+func TestItemExtendedUnmarshal(t *testing.T) {
+	data := []byte(`{
+		"type": "Feature",
+		"stac_version": "1.0.0",
+		"id": "item-id",
+		"geometry": {
+			"type": "Point",
+			"coordinates": [0, 0]
+		},
+		"properties": {
+			"test": "value",
+			"auth:schemes": {
+				"openid": {
+					"type": "openIdConnect",
+					"description": "Test auth configuration",
+					"openIdConnectUrl": "https://example.com/auth/.well-known/openid-configuration"
+				}
+			}
+		},
+		"links": [
+			{
+				"rel": "self",
+				"href": "https://example.com/stac/item-id"
+			}
+		],
+		"assets": {
+			"image": {
+				"title": "Image",
+				"href": "https://example.com/stac/item-id/image.tif",
+				"type": "image/tif",
+				"auth:refs": ["openid"]
+			}
+		},
+		"stac_extensions": [
+			"https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+		]
+	}`)
+
+	item := &stac.Item{}
+	require.NoError(t, json.Unmarshal(data, item))
+
+	expected := &stac.Item{
+		Version: "1.0.0",
+		Id:      "item-id",
+		Geometry: map[string]any{
+			"type":        "Point",
+			"coordinates": []any{float64(0), float64(0)},
+		},
+		Properties: map[string]any{
+			"test": "value",
+		},
+		Links: []*stac.Link{
+			{Href: "https://example.com/stac/item-id", Rel: "self"},
+		},
+		Assets: map[string]*stac.Asset{
+			"image": {
+				Title: "Image",
+				Href:  "https://example.com/stac/item-id/image.tif",
+				Type:  "image/tif",
+				Extensions: []stac.Extension{
+					&auth.Asset{
+						Refs: []string{"openid"},
+					},
+				},
+			},
+		},
+		Extensions: []stac.Extension{
+			&auth.Item{
+				Schemes: map[string]*auth.Scheme{
+					"openid": {
+						Type:             "openIdConnect",
+						Description:      "Test auth configuration",
+						OpenIdConnectUrl: "https://example.com/auth/.well-known/openid-configuration",
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, expected, item)
 }
 
 func TestCollectionExtendedUnmarshal(t *testing.T) {
