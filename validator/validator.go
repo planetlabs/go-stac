@@ -3,6 +3,7 @@ package validator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -158,6 +159,27 @@ func (v *Validator) Validate(ctx context.Context, resource string) error {
 	return crawler.Crawl(resource, v.validate, &crawler.Options{
 		Queue: crawler.NewMemoryQueue(ctx, v.concurrency),
 	})
+}
+
+// ValidateBytes validates a single STAC resource.
+//
+// The location is a URL or file path that represents the resource and will
+// be used in any validation error.
+func ValidateBytes(ctx context.Context, data []byte, location string) error {
+	resource := crawler.Resource{}
+	if err := json.Unmarshal(data, &resource); err != nil {
+		return fmt.Errorf("failed to parse data as JSON: %w", err)
+	}
+	v := New(&Options{NoRecursion: true})
+	info := &crawler.ResourceInfo{
+		Location: location,
+		Entry:    location,
+	}
+	err := v.validate(resource, info)
+	if !errors.Is(err, crawler.ErrStopRecursion) {
+		return err
+	}
+	return nil
 }
 
 func (v *Validator) validate(resource crawler.Resource, info *crawler.ResourceInfo) error {

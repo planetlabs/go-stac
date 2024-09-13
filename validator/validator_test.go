@@ -68,6 +68,40 @@ func (s *Suite) TestValidCases() {
 	}
 }
 
+func (s *Suite) TestValidateBytes() {
+	cases := []string{
+		"v1.0.0-beta.2/LC08_L1TP_097073_20130319_20200913_02_T1.json",
+		"v1.0.0/catalog.json",
+		"v1.0.0/collection.json",
+		"v1.0.0/item.json",
+		"v1.0.0/catalog-with-item.json",
+		"v1.0.0/catalog-with-multiple-items.json",
+		"v1.0.0/item-eo.json",
+	}
+
+	ctx := context.Background()
+	for _, c := range cases {
+		s.Run(c, func() {
+			location := path.Join("testdata", "cases", c)
+			data, err := os.ReadFile(location)
+			s.Require().NoError(err)
+			s.NoError(validator.ValidateBytes(ctx, data, location))
+		})
+	}
+}
+
+func (s *Suite) TestValidateBytesInvalidItem() {
+	location := "testdata/cases/v1.0.0/item-missing-id.json"
+
+	data, readErr := os.ReadFile(location)
+	s.Require().NoError(readErr)
+	ctx := context.Background()
+
+	err := validator.ValidateBytes(ctx, data, location)
+	s.Require().Error(err)
+	s.Assert().True(strings.HasSuffix(fmt.Sprintf("%#v", err), "missing properties: 'id'"))
+}
+
 func (s *Suite) TestSchemaMap() {
 	v := validator.New(&validator.Options{
 		SchemaMap: map[string]string{
