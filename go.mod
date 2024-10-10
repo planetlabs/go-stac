@@ -1,6 +1,8 @@
 module github.com/planetlabs/go-stac
 
-go 1.21
+go 1.22
+
+toolchain go1.22.5
 
 require (
 	github.com/dlclark/regexp2 v1.11.4
@@ -10,7 +12,7 @@ require (
 	github.com/google/go-github/v51 v51.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
-	github.com/schollz/progressbar/v3 v3.14.6
+	github.com/schollz/progressbar/v3 v3.16.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.27.4
@@ -35,8 +37,8 @@ require (
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.6.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/term v0.22.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/term v0.24.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
