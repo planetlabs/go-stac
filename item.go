@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -122,6 +123,14 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	return json.Marshal(itemMap)
 }
 
+var geometryUnmarshaler json.Unmarshaler
+
+// GeometryUnmarshaler allows a custom geometry type that satisfies the json.Unmarshaler interface to be provided.
+// If not set, item geometries will be unmarshaled as a map[string]any.
+func GeometryUnmarshaler(g json.Unmarshaler) {
+	geometryUnmarshaler = g
+}
+
 func (item *Item) UnmarshalJSON(data []byte) error {
 	itemMap := map[string]any{}
 	if err := json.Unmarshal(data, &itemMap); err != nil {
@@ -164,6 +173,33 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 
 	if err := decodeExtendedLinks(itemMap, item.Links, extensionUris); err != nil {
 		return err
+	}
+
+	if geometryUnmarshaler != nil {
+		geometryMap, ok := itemMap["geometry"]
+		if ok {
+			geometryData, err := json.Marshal(geometryMap)
+			if err != nil {
+				return err
+			}
+
+			var gv any
+			gvt := reflect.TypeOf(geometryUnmarshaler)
+			if gvt.Kind() == reflect.Pointer {
+				gv = reflect.New(gvt.Elem()).Interface()
+			} else {
+				gv = reflect.New(gvt).Elem().Interface()
+			}
+			g, ok := gv.(json.Unmarshaler)
+			if !ok {
+				return fmt.Errorf("expected %#v to satisfy the json.Unmarshaler interface", gv)
+			}
+			if err := g.UnmarshalJSON(geometryData); err != nil {
+				return err
+			}
+
+			item.Geometry = g
+		}
 	}
 
 	return nil
