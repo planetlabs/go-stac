@@ -2,6 +2,7 @@ package stac
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -140,6 +141,9 @@ func (collection *Collection) UnmarshalJSON(data []byte) error {
 			continue
 		}
 		if err := extension.Decode(collectionMap); err != nil {
+			if errors.Is(err, ErrExtensionDoesNotApply) {
+				continue
+			}
 			return fmt.Errorf("decoding error for %s: %w", uri, err)
 		}
 		collection.Extensions = append(collection.Extensions, extension)

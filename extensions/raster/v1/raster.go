@@ -9,6 +9,7 @@ import (
 const (
 	extensionUri     = "https://stac-extensions.github.io/raster/v1.1.0/schema.json"
 	extensionPattern = `https://stac-extensions.github.io/raster/v1\..*/schema.json`
+	prefix           = "raster"
 )
 
 func init() {
@@ -63,5 +64,5 @@ func (e *Asset) Encode(assetMap map[string]any) error {
 }
 
 func (e *Asset) Decode(assetMap map[string]any) error {
-	return stac.DecodeExtendedMap(e, assetMap)
+	return stac.DecodeExtendedMap(e, assetMap, prefix)
 }

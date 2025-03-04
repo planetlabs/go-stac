@@ -13,6 +13,7 @@ type Asset struct {
 	Description string      `json:"description,omitempty"`
 	Created     string      `json:"created,omitempty"`
 	Roles       []string    `json:"roles,omitempty"`
+	Bands       []*Band     `json:"bands,omitempty"`
 	Extensions  []Extension `json:"-"`
 }
 
@@ -47,6 +48,16 @@ func EncodeAssets(assets map[string]*Asset) (map[string]any, []string, error) {
 				return nil, nil, err
 			}
 		}
+
+		bandMaps, uris, err := EncodeBands(asset.Bands)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(bandMaps) > 0 {
+			extensionUris = append(extensionUris, uris...)
+			assetMap["bands"] = bandMaps
+		}
+
 		assetsMap[key] = assetMap
 	}
 	return assetsMap, extensionUris, nil

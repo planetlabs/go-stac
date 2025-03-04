@@ -51,7 +51,7 @@ func (e *Collection) Decode(collectionMap map[string]any) error {
 
 	assetsMap, ok := assetsValue.(map[string]any)
 	if !ok {
-		return fmt.Errorf("expected item_assets to be an map[string]any, got %t", assetsValue)
+		return fmt.Errorf("expected item_assets to be an map[string]any, got %T", assetsValue)
 	}
 
 	extensionUris, extensionErr := stac.GetExtensionUris(collectionMap)
@@ -63,7 +63,7 @@ func (e *Collection) Decode(collectionMap map[string]any) error {
 	for key, assetValue := range assetsMap {
 		assetMap, ok := assetValue.(map[string]any)
 		if !ok {
-			return fmt.Errorf("expected asset to be a map[string]any, got %t", assetValue)
+			return fmt.Errorf("expected asset to be a map[string]any, got %T", assetValue)
 		}
 		asset := &stac.Asset{}
 		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
