@@ -41,16 +41,42 @@ func TestLink(t *testing.T) {
 		},
 		{
 			link: &stac.Link{
-				Rel:  "test",
-				Href: "https://example.com/test",
-				AdditionalFields: map[string]any{
-					"method": "GET",
+				Rel:    "test",
+				Href:   "https://example.com/test",
+				Method: "GET",
+				Headers: map[string]any{
+					"Content-Type": "test-content-type",
+				},
+				Body: map[string]any{
+					"foo": "bar",
 				},
 			},
 			data: `{
 				"rel": "test",
 				"href": "https://example.com/test",
-				"method": "GET"
+				"method": "GET",
+				"headers": {
+					"Content-Type": "test-content-type"
+				},
+				"body": {
+					"foo": "bar"
+				}
+			}`,
+		},
+		{
+			link: &stac.Link{
+				Rel:    "test",
+				Href:   "https://example.com/test",
+				Method: "GET",
+				AdditionalFields: map[string]any{
+					"custom": "custom-link",
+				},
+			},
+			data: `{
+				"rel": "test",
+				"href": "https://example.com/test",
+				"method": "GET",
+				"custom": "custom-link"
 			}`,
 		},
 	}

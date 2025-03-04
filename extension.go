@@ -3,8 +3,10 @@ package stac
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -61,13 +63,13 @@ func GetExtensionUris(data map[string]any) ([]string, error) {
 
 	values, ok := value.([]any)
 	if !ok {
-		return nil, fmt.Errorf("unexpected type for %s: %t", uriKey, value)
+		return nil, fmt.Errorf("unexpected type for %s: %T", uriKey, value)
 	}
 	uris := make([]string, len(values))
 	for i, v := range values {
 		uri, ok := v.(string)
 		if !ok {
-			return nil, fmt.Errorf("expected strings for %s, got %t", uriKey, v)
+			return nil, fmt.Errorf("expected strings for %s, got %T", uriKey, v)
 		}
 		uris[i] = uri
 	}
@@ -85,10 +87,16 @@ func SetExtensionUris(data map[string]any, uris []string) {
 const propertiesKey = "properties"
 
 func EncodeExtendedItemProperties(itemExtension Extension, itemMap map[string]any) error {
-	properties := itemMap[propertiesKey]
-	if properties == nil {
-		properties = map[string]any{}
+	properties := map[string]any{}
+	propertiesValue := itemMap[propertiesKey]
+	if propertiesValue != nil {
+		p, ok := propertiesValue.(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected a properties object, got %T", propertiesValue)
+		}
+		maps.Copy(properties, p)
 	}
+	initialLength := len(properties)
 	encoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
 		Result:  &properties,
@@ -99,6 +107,10 @@ func EncodeExtendedItemProperties(itemExtension Extension, itemMap map[string]an
 	if err := encoder.Decode(itemExtension); err != nil {
 		return err
 	}
+	if len(properties) == initialLength {
+		return ErrExtensionDoesNotApply
+	}
+
 	itemMap[propertiesKey] = properties
 	return nil
 }
@@ -110,7 +122,7 @@ func DecodeExtendedItemProperties(itemExtension Extension, itemMap map[string]an
 	}
 	properties, ok := propertiesValue.(map[string]any)
 	if !ok {
-		return fmt.Errorf("unexpected properties type: %t", propertiesValue)
+		return fmt.Errorf("unexpected properties type: %T", propertiesValue)
 	}
 
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -135,6 +147,9 @@ func DecodeExtendedItemProperties(itemExtension Extension, itemMap map[string]an
 	if err := encoder.Decode(itemExtension); err != nil {
 		return err
 	}
+	if len(extendedProperties) == 0 {
+		return ErrExtensionDoesNotApply
+	}
 	for key := range extendedProperties {
 		delete(properties, key)
 	}
@@ -143,6 +158,7 @@ func DecodeExtendedItemProperties(itemExtension Extension, itemMap map[string]an
 }
 
 func EncodeExtendedMap(extension Extension, data map[string]any) error {
+	initialLength := len(data)
 	encoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
 		Result:  &data,
@@ -150,10 +166,28 @@ func EncodeExtendedMap(extension Extension, data map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return encoder.Decode(extension)
+	if err := encoder.Decode(extension); err != nil {
+		return err
+	}
+	if len(data) == initialLength {
+		return ErrExtensionDoesNotApply
+	}
+	return nil
 }
 
-func DecodeExtendedMap(extension Extension, data map[string]any) error {
+func DecodeExtendedMap(extension Extension, data map[string]any, prefix string) error {
+	if prefix != "" {
+		applies := false
+		for k := range data {
+			if strings.HasPrefix(k, prefix+":") {
+				applies = true
+				break
+			}
+		}
+		if !applies {
+			return ErrExtensionDoesNotApply
+		}
+	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json",
 		Result:  extension,
@@ -171,7 +205,7 @@ func decodeExtendedLinks(data map[string]any, links []*Link, extensionUris []str
 	}
 	linksData, ok := linksValue.([]any)
 	if !ok {
-		return fmt.Errorf("unexpected type for links: %t", linksValue)
+		return fmt.Errorf("unexpected type for links: %T", linksValue)
 	}
 
 	for i, link := range links {
@@ -182,7 +216,7 @@ func decodeExtendedLinks(data map[string]any, links []*Link, extensionUris []str
 			}
 			linkMap, ok := linksData[i].(map[string]any)
 			if !ok {
-				return fmt.Errorf("unexpected type for %q link: %t", i, linksData[i])
+				return fmt.Errorf("unexpected type for %q link: %T", i, linksData[i])
 			}
 			if err := extension.Decode(linkMap); err != nil {
 				if errors.Is(err, ErrExtensionDoesNotApply) {
@@ -197,25 +231,26 @@ func decodeExtendedLinks(data map[string]any, links []*Link, extensionUris []str
 	return nil
 }
 
-func decodeExtendedAssets(data map[string]any, assets map[string]*Asset, extensionUris []string) error {
-	assetsValue, ok := data["assets"]
+func decodeExtendedAssets(data map[string]any, assetKey string, assets map[string]*Asset, extensionUris []string) error {
+	assetsValue, ok := data[assetKey]
 	if !ok {
 		return nil
 	}
 	assetsMap, ok := assetsValue.(map[string]any)
 	if !ok {
-		return fmt.Errorf("unexpected type for assets: %t", assetsValue)
+		return fmt.Errorf("unexpected type for assets: %T", assetsValue)
 	}
 
 	for key, asset := range assets {
+		assetMap, ok := assetsMap[key].(map[string]any)
+		if !ok {
+			return fmt.Errorf("unexpected type for %q asset: %T", key, assetsMap[key])
+		}
+
 		for _, uri := range extensionUris {
 			extension := GetAssetExtension(uri)
 			if extension == nil {
 				continue
-			}
-			assetMap, ok := assetsMap[key].(map[string]any)
-			if !ok {
-				return fmt.Errorf("unexpected type for %q asset: %t", key, assetsMap[key])
 			}
 			if err := extension.Decode(assetMap); err != nil {
 				if errors.Is(err, ErrExtensionDoesNotApply) {
@@ -225,8 +260,52 @@ func decodeExtendedAssets(data map[string]any, assets map[string]*Asset, extensi
 			}
 			asset.Extensions = append(asset.Extensions, extension)
 		}
+
+		if err := decodeExtendedBands(assetMap, asset.Bands, extensionUris); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+func decodeExtendedBands(assetData map[string]any, bands []*Band, extensionUris []string) error {
+	bandsValue, ok := assetData["bands"]
+	if !ok {
+		return nil
+	}
+
+	bandsSlice, ok := bandsValue.([]any)
+	if !ok {
+		return fmt.Errorf("unexpected type for bands: %T", bandsValue)
+	}
+
+	if len(bandsSlice) != len(bands) {
+		return fmt.Errorf("band length mismatch: got %d but expected %d", len(bandsSlice), len(bands))
+	}
+
+	for i, band := range bands {
+		for _, uri := range extensionUris {
+			extension := GetBandExtension(uri)
+			if extension == nil {
+				continue
+			}
+
+			bandMap, ok := bandsSlice[i].(map[string]any)
+			if !ok {
+				return fmt.Errorf("unexpected type for band %d: %T", i, bandsSlice[i])
+			}
+
+			if err := extension.Decode(bandMap); err != nil {
+				if errors.Is(err, ErrExtensionDoesNotApply) {
+					continue
+				}
+				return fmt.Errorf("decoding error for %s: %w", uri, err)
+			}
+
+			band.Extensions = append(band.Extensions, extension)
+		}
+	}
 	return nil
 }
 

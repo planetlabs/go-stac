@@ -167,7 +167,7 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if err := decodeExtendedAssets(itemMap, item.Assets, extensionUris); err != nil {
+	if err := decodeExtendedAssets(itemMap, "assets", item.Assets, extensionUris); err != nil {
 		return err
 	}
 

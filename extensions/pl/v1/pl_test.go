@@ -1,16 +1,18 @@
-package sar_test
+package pl_test
 
 import (
 	"encoding/json"
 	"testing"
 
 	"github.com/planetlabs/go-stac"
-	"github.com/planetlabs/go-stac/extensions/sar"
+	"github.com/planetlabs/go-stac/extensions/pl/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestItemExtendedMarshal(t *testing.T) {
+	groundControlRatio := 0.5
+
 	item := &stac.Item{
 		Version: "1.0.0",
 		Id:      "item-id",
@@ -29,14 +31,20 @@ func TestItemExtendedMarshal(t *testing.T) {
 				Title: "Thumbnail",
 				Href:  "https://example.com/stac/item-id/thumb.png",
 				Type:  "image/png",
+				Extensions: []stac.Extension{
+					&pl.Asset{
+						AssetType: "visual",
+					},
+				},
 			},
 		},
 		Extensions: []stac.Extension{
-			&sar.Item{
-				InstrumentMode: "IW",
-				FrequencyBand:  "C",
-				Polarizations:  []string{"VV", "VH"},
-				ProductType:    "GRD",
+			&pl.Item{
+				ItemType:           "PSScene",
+				PixelResolution:    3,
+				QualityCategory:    "test",
+				StripId:            "123",
+				GroundControlRatio: &groundControlRatio,
 			},
 		},
 	}
@@ -54,10 +62,11 @@ func TestItemExtendedMarshal(t *testing.T) {
 		},
 		"properties": {
 			"test": "value",
-			"sar:instrument_mode": "IW",
-			"sar:frequency_band": "C",
-			"sar:product_type": "GRD",
-			"sar:polarizations": ["VV", "VH"]
+			"pl:item_type": "PSScene",
+			"pl:pixel_resolution": 3,
+			"pl:quality_category": "test",
+			"pl:strip_id": "123",
+			"pl:ground_control_ratio": 0.5
 		},
 		"links": [
 			{
@@ -69,26 +78,20 @@ func TestItemExtendedMarshal(t *testing.T) {
 			"thumbnail": {
 				"title": "Thumbnail",
 				"href": "https://example.com/stac/item-id/thumb.png",
-				"type": "image/png"
+				"type": "image/png",
+				"pl:asset_type": "visual"
 			}
 		},
 		"stac_extensions": [
-			"https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 		]
 	}`
 
 	assert.JSONEq(t, expected, string(data))
 }
 
-func TestItemExtendedMarshalOptional(t *testing.T) {
-	centerFrequency := 5.405
-	resolutionRange := 50.0
-	resolutionAzimuth := 50.0
-	pixelSpacingRange := 25.0
-	pixelSpacingAzimuth := 25.0
-	looksRange := 3.0
-	looksAzimuth := 1.0
-	looksEquivalentNumber := 2.7
+func TestItemMarshalGridCell(t *testing.T) {
+	gridCell := "1259913"
 
 	item := &stac.Item{
 		Version: "1.0.0",
@@ -108,22 +111,17 @@ func TestItemExtendedMarshalOptional(t *testing.T) {
 				Title: "Thumbnail",
 				Href:  "https://example.com/stac/item-id/thumb.png",
 				Type:  "image/png",
+				Extensions: []stac.Extension{
+					&pl.Asset{
+						AssetType: "visual",
+					},
+				},
 			},
 		},
 		Extensions: []stac.Extension{
-			&sar.Item{
-				InstrumentMode:        "IW",
-				FrequencyBand:         "C",
-				Polarizations:         []string{"VV", "VH"},
-				ProductType:           "GRD",
-				CenterFrequency:       &centerFrequency,
-				ResolutionRange:       &resolutionRange,
-				ResolutionAzimuth:     &resolutionAzimuth,
-				PixelSpacingRange:     &pixelSpacingRange,
-				PixelSpacingAzimuth:   &pixelSpacingAzimuth,
-				LooksRange:            &looksRange,
-				LooksAzimuth:          &looksAzimuth,
-				LooksEquivalentNumber: &looksEquivalentNumber,
+			&pl.Item{
+				ItemType: "REOrthoTile",
+				GridCell: &gridCell,
 			},
 		},
 	}
@@ -141,18 +139,8 @@ func TestItemExtendedMarshalOptional(t *testing.T) {
 		},
 		"properties": {
 			"test": "value",
-			"sar:instrument_mode": "IW",
-			"sar:frequency_band": "C",
-			"sar:product_type": "GRD",
-			"sar:polarizations": ["VV", "VH"],
-			"sar:resolution_range": 50,
-			"sar:resolution_azimuth": 50,
-			"sar:pixel_spacing_range": 25,
-			"sar:pixel_spacing_azimuth": 25,
-			"sar:looks_range": 3,
-			"sar:looks_azimuth": 1,
-			"sar:looks_equivalent_number": 2.7,
-			"sar:center_frequency": 5.405
+			"pl:item_type": "REOrthoTile",
+			"pl:grid_cell": "1259913"
 		},
 		"links": [
 			{
@@ -164,11 +152,12 @@ func TestItemExtendedMarshalOptional(t *testing.T) {
 			"thumbnail": {
 				"title": "Thumbnail",
 				"href": "https://example.com/stac/item-id/thumb.png",
-				"type": "image/png"
+				"type": "image/png",
+				"pl:asset_type": "visual"
 			}
 		},
 		"stac_extensions": [
-			"https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 		]
 	}`
 
@@ -186,10 +175,11 @@ func TestItemExtendedUnmarshal(t *testing.T) {
 		},
 		"properties": {
 			"test": "value",
-			"sar:instrument_mode": "IW",
-			"sar:frequency_band": "C",
-			"sar:product_type": "GRD",
-			"sar:polarizations": ["VV", "VH"]
+			"pl:item_type": "PSScene",
+			"pl:pixel_resolution": 3,
+			"pl:quality_category": "test",
+			"pl:strip_id": "123",
+			"pl:ground_control_ratio": 0.5
 		},
 		"links": [
 			{
@@ -201,16 +191,19 @@ func TestItemExtendedUnmarshal(t *testing.T) {
 			"thumbnail": {
 				"title": "Thumbnail",
 				"href": "https://example.com/stac/item-id/thumb.png",
-				"type": "image/png"
+				"type": "image/png",
+				"pl:asset_type": "visual"
 			}
 		},
 		"stac_extensions": [
-			"https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+			"https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 		]
 	}`)
 
 	item := &stac.Item{}
 	require.NoError(t, json.Unmarshal(data, item))
+
+	groundControlRatio := 0.5
 
 	expected := &stac.Item{
 		Version: "1.0.0",
@@ -230,14 +223,20 @@ func TestItemExtendedUnmarshal(t *testing.T) {
 				Title: "Thumbnail",
 				Href:  "https://example.com/stac/item-id/thumb.png",
 				Type:  "image/png",
+				Extensions: []stac.Extension{
+					&pl.Asset{
+						AssetType: "visual",
+					},
+				},
 			},
 		},
 		Extensions: []stac.Extension{
-			&sar.Item{
-				InstrumentMode: "IW",
-				FrequencyBand:  "C",
-				Polarizations:  []string{"VV", "VH"},
-				ProductType:    "GRD",
+			&pl.Item{
+				ItemType:           "PSScene",
+				PixelResolution:    3,
+				QualityCategory:    "test",
+				StripId:            "123",
+				GroundControlRatio: &groundControlRatio,
 			},
 		},
 	}

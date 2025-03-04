@@ -2,9 +2,11 @@ package stac
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-viper/mapstructure/v2"
 )
 
@@ -20,6 +22,7 @@ type Collection struct {
 	Summaries   map[string]any    `json:"summaries,omitempty"`
 	Links       []*Link           `json:"links"`
 	Assets      map[string]*Asset `json:"assets,omitempty"`
+	ItemAssets  map[string]*Asset `json:"item_assets,omitempty"`
 	Extensions  []Extension       `json:"-"`
 }
 
@@ -77,6 +80,36 @@ func (collection Collection) MarshalJSON() ([]byte, error) {
 
 	extensionUris := []string{}
 	lookup := map[string]bool{}
+
+	assetsMap, assetExtensionUris, err := EncodeAssets(collection.Assets)
+	if err != nil {
+		return nil, err
+	}
+	if len(assetsMap) > 0 {
+		collectionMap["assets"] = assetsMap
+	}
+
+	for _, uri := range assetExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
+		}
+	}
+
+	itemAssetsMap, itemAssetExtensionUris, err := EncodeAssets(collection.ItemAssets)
+	if err != nil {
+		return nil, err
+	}
+	if len(itemAssetsMap) > 0 {
+		collectionMap["item_assets"] = itemAssetsMap
+	}
+
+	for _, uri := range itemAssetExtensionUris {
+		if !lookup[uri] {
+			extensionUris = append(extensionUris, uri)
+			lookup[uri] = true
+		}
+	}
 
 	for _, extension := range collection.Extensions {
 		if err := extension.Encode(collectionMap); err != nil {
@@ -140,9 +173,31 @@ func (collection *Collection) UnmarshalJSON(data []byte) error {
 			continue
 		}
 		if err := extension.Decode(collectionMap); err != nil {
+			if errors.Is(err, ErrExtensionDoesNotApply) {
+				continue
+			}
 			return fmt.Errorf("decoding error for %s: %w", uri, err)
 		}
 		collection.Extensions = append(collection.Extensions, extension)
+	}
+
+	if err := decodeExtendedAssets(collectionMap, "assets", collection.Assets, extensionUris); err != nil {
+		return err
+	}
+
+	// Item assets were added  to collections in version 1.1.0
+	itemAssetsConstraint, err := semver.NewConstraint(">= 1.1.0")
+	if err != nil {
+		return fmt.Errorf("could not parse version constraint: %w", err)
+	}
+
+	if collectionVersion, err := semver.NewVersion(collection.Version); err == nil && itemAssetsConstraint.Check(collectionVersion) {
+		if err := decodeExtendedAssets(collectionMap, "item_assets", collection.ItemAssets, extensionUris); err != nil {
+			return err
+		}
+	} else {
+		// prior to 1.1.0, the item assets extension is used
+		collection.ItemAssets = nil
 	}
 
 	if err := decodeExtendedLinks(collectionMap, collection.Links, extensionUris); err != nil {
