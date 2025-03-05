@@ -9,6 +9,7 @@ import (
 const (
 	extensionUri     = "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
 	extensionPattern = `https://stac-extensions.github.io/eo/v1\..*/schema.json`
+	prefix           = "eo"
 )
 
 func init() {
@@ -76,7 +77,7 @@ func (e *Asset) Encode(assetMap map[string]any) error {
 }
 
 func (e *Asset) Decode(assetMap map[string]any) error {
-	if err := stac.DecodeExtendedMap(e, assetMap); err != nil {
+	if err := stac.DecodeExtendedMap(e, assetMap, prefix); err != nil {
 		return err
 	}
 	if len(e.Bands) == 0 {

@@ -11,6 +11,7 @@ import (
 const (
 	extensionUri     = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
 	extensionPattern = `https://stac-extensions.github.io/authentication/v1\..*/schema.json`
+	prefix           = "auth"
 	schemesKey       = "auth:schemes"
 	refsKey          = "auth:refs"
 )
@@ -105,14 +106,14 @@ func decodeSchemes(data map[string]any) (map[string]*Scheme, error) {
 
 	schemesMap, ok := schemesValue.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("expected %s to be an map[string]any, got %t", schemesKey, schemesValue)
+		return nil, fmt.Errorf("expected %s to be an map[string]any, got %T", schemesKey, schemesValue)
 	}
 
 	schemes := map[string]*Scheme{}
 	for key, schemeValue := range schemesMap {
 		schemeMap, ok := schemeValue.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("expected scheme to be a map[string]any, got %t", schemeValue)
+			return nil, fmt.Errorf("expected scheme to be a map[string]any, got %T", schemeValue)
 		}
 		scheme := &Scheme{}
 		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -159,7 +160,7 @@ func (e *Asset) Decode(assetMap map[string]any) error {
 	if _, ok := assetMap[refsKey]; !ok {
 		return stac.ErrExtensionDoesNotApply
 	}
-	return stac.DecodeExtendedMap(e, assetMap)
+	return stac.DecodeExtendedMap(e, assetMap, prefix)
 }
 
 type Link struct {
@@ -180,5 +181,5 @@ func (e *Link) Decode(linkMap map[string]any) error {
 	if _, ok := linkMap[refsKey]; !ok {
 		return stac.ErrExtensionDoesNotApply
 	}
-	return stac.DecodeExtendedMap(e, linkMap)
+	return stac.DecodeExtendedMap(e, linkMap, prefix)
 }

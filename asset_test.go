@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/planetlabs/go-stac"
-	"github.com/planetlabs/go-stac/extensions/pl"
+	"github.com/planetlabs/go-stac/extensions/pl/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
