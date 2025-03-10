@@ -12,6 +12,9 @@ type Link struct {
 	Rel              string         `mapstructure:"rel"`
 	Type             string         `mapstructure:"type,omitempty"`
 	Title            string         `mapstructure:"title,omitempty"`
+	Method           string         `mapstructure:"method,omitempty"`
+	Headers          map[string]any `mapstructure:"headers,omitempty"`
+	Body             any            `mapstructure:"body,omitempty"`
 	Extensions       []Extension    `mapstructure:"-"`
 	AdditionalFields map[string]any `mapstructure:",remain"`
 }

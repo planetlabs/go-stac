@@ -9,6 +9,7 @@ import (
 const (
 	extensionUri     = "https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json"
 	extensionPattern = `https://planetlabs.github.io/stac-extension/v1\..*/schema.json`
+	prefix           = "pl"
 )
 
 func init() {
@@ -42,7 +43,7 @@ func (e *Asset) Encode(assetMap map[string]any) error {
 }
 
 func (e *Asset) Decode(assetMap map[string]any) error {
-	return stac.DecodeExtendedMap(e, assetMap)
+	return stac.DecodeExtendedMap(e, assetMap, prefix)
 }
 
 type Item struct {
