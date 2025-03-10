@@ -49,8 +49,6 @@ To write out a version of a catalog or collection that includes metadata for the
 
 ## Library Use
 
-Requires Go >= 1.18
-
 Install the module into your project.
 ```
 go get github.com/planetlabs/go-stac
