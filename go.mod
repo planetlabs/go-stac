@@ -1,7 +1,6 @@
 module github.com/planetlabs/go-stac
 
-go 1.22
-toolchain go1.23.7
+go 1.23.0
 
 require (
 	github.com/dlclark/regexp2 v1.11.5
