@@ -1,8 +1,6 @@
 module github.com/planetlabs/go-stac
 
-go 1.22
-
-toolchain go1.22.5
+go 1.23.0
 
 require (
 	github.com/dlclark/regexp2 v1.11.5
@@ -17,7 +15,7 @@ require (
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.27.6
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 )
 
 require (
