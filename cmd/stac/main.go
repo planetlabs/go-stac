@@ -55,7 +55,7 @@ func (e *Enum) String() string {
 }
 
 func toEnvVar(flag string) string {
-	return fmt.Sprintf("%s_%s", "STAC", strings.ToUpper(strings.Replace(flag, "-", "_", -1)))
+	return fmt.Sprintf("%s_%s", "STAC", strings.ToUpper(strings.ReplaceAll(flag, "-", "_")))
 }
 
 var (
