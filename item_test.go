@@ -2,9 +2,11 @@ package stac_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/planetlabs/go-stac"
+	"github.com/planetlabs/go-stac/extensions/eo/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,4 +158,32 @@ func TestGeometryUnmarshal(t *testing.T) {
 	g, ok := item.Geometry.(*TestGeometry)
 	require.True(t, ok)
 	assert.NotNil(t, g.data)
+}
+
+func getExtension(item *stac.Item, uri string) stac.Extension {
+	for _, extension := range item.Extensions {
+		if extension.URI() == uri {
+			return extension
+		}
+	}
+	return nil
+}
+
+func TestItemListUnmarshal(t *testing.T) {
+	data, err := os.ReadFile("testdata/items.json")
+	require.NoError(t, err)
+
+	itemList := &stac.ItemsList{}
+	require.NoError(t, json.Unmarshal([]byte(data), itemList))
+
+	require.Len(t, itemList.Items, 2)
+	first := itemList.Items[0]
+
+	eoExtension := getExtension(first, "https://stac-extensions.github.io/eo/v1.1.0/schema.json")
+	require.NotNil(t, eoExtension)
+	eo, ok := eoExtension.(*eo.Item)
+	require.True(t, ok)
+
+	require.NotNil(t, eo.CloudCover)
+	assert.Equal(t, float64(50), *eo.CloudCover)
 }
