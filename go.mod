@@ -3,7 +3,7 @@ module github.com/planetlabs/go-stac
 go 1.23.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
