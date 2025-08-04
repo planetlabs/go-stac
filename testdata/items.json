@@ -1,0 +1,225 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "assets": {
+        "thumbnail": {
+          "auth:refs": [
+            "openid"
+          ],
+          "href": "https://tiles.planet.com/data/v1/item-types/PSScene/items/20250804_153448_85_2533/thumb?width=512",
+          "roles": [
+            "overview"
+          ],
+          "title": "Image Thumbnail",
+          "type": "image/png"
+        }
+      },
+      "bbox": [
+        -73.258517045974,
+        -16.69413428340269,
+        -72.88920081160497,
+        -16.44078244605111
+      ],
+      "collection": "PSScene",
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              -73.21921515523202,
+              -16.44078244605111
+            ],
+            [
+              -72.88920081160497,
+              -16.50383386770677
+            ],
+            [
+              -72.92830966824664,
+              -16.69413428340269
+            ],
+            [
+              -73.258517045974,
+              -16.630494685555924
+            ],
+            [
+              -73.21921515523202,
+              -16.44078244605111
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "id": "20250804_153448_85_2533",
+      "links": [
+        {
+          "auth:refs": [
+            "openid"
+          ],
+          "href": "https://api.planet.com/x/data/collections/PSScene/items/20250804_153448_85_2533",
+          "rel": "self",
+          "title": "Item Details",
+          "type": "application/geo+json"
+        }
+      ],
+      "properties": {
+        "auth:schemes": {
+          "openid": {
+            "type": "openIdConnect",
+            "description": "Planet OpenID Provider",
+            "openIdConnectUrl": "https://login.planet.com/.well-known/openid-configuration"
+          }
+        },
+        "constellation": "planetscope",
+        "created": "2025-08-04T16:53:02Z",
+        "datetime": "2025-08-04T15:34:48.858029Z",
+        "eo:cloud_cover": 50,
+        "eo:snow_cover": 0,
+        "gsd": 4,
+        "instruments": [
+          "PSB.SD"
+        ],
+        "pl:clear_percent": 44,
+        "pl:ground_control": false,
+        "pl:item_type": "PSScene",
+        "pl:pixel_resolution": 3,
+        "pl:publishing_stage": "preview",
+        "pl:quality_category": "test",
+        "pl:strip_id": "8234808",
+        "platform": "2533",
+        "updated": "2025-08-04T16:53:02Z",
+        "view:azimuth": 280.3,
+        "view:off_nadir": 2.1,
+        "view:sun_azimuth": 32.7,
+        "view:sun_elevation": 50.5
+      },
+      "stac_extensions": [
+        "https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json",
+        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/view/v1.0.0/schema.json"
+      ],
+      "stac_version": "1.0.0",
+      "type": "Feature"
+    },
+    {
+      "assets": {
+        "thumbnail": {
+          "auth:refs": [
+            "openid"
+          ],
+          "href": "https://tiles.planet.com/data/v1/item-types/PSScene/items/20250804_153446_72_2533/thumb?width=512",
+          "roles": [
+            "overview"
+          ],
+          "title": "Image Thumbnail",
+          "type": "image/png"
+        }
+      },
+      "bbox": [
+        -73.23124120340088,
+        -16.559480128427975,
+        -72.86221827276259,
+        -16.306158115768216
+      ],
+      "collection": "PSScene",
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              -73.19197912148246,
+              -16.306158115768216
+            ],
+            [
+              -72.86221827276259,
+              -16.369192673645173
+            ],
+            [
+              -72.90128981124934,
+              -16.559480128427975
+            ],
+            [
+              -73.23124120340088,
+              -16.495859859350162
+            ],
+            [
+              -73.19197912148246,
+              -16.306158115768216
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "id": "20250804_153446_72_2533",
+      "links": [
+        {
+          "auth:refs": [
+            "openid"
+          ],
+          "href": "https://api.planet.com/x/data/collections/PSScene/items/20250804_153446_72_2533",
+          "rel": "self",
+          "title": "Item Details",
+          "type": "application/geo+json"
+        }
+      ],
+      "properties": {
+        "auth:schemes": {
+          "openid": {
+            "type": "openIdConnect",
+            "description": "Planet OpenID Provider",
+            "openIdConnectUrl": "https://login.planet.com/.well-known/openid-configuration"
+          }
+        },
+        "constellation": "planetscope",
+        "created": "2025-08-04T16:48:04Z",
+        "datetime": "2025-08-04T15:34:46.722464Z",
+        "eo:cloud_cover": 19,
+        "eo:snow_cover": 0,
+        "gsd": 4,
+        "instruments": [
+          "PSB.SD"
+        ],
+        "pl:clear_percent": 78,
+        "pl:ground_control": false,
+        "pl:item_type": "PSScene",
+        "pl:pixel_resolution": 3,
+        "pl:publishing_stage": "preview",
+        "pl:quality_category": "test",
+        "pl:strip_id": "8234808",
+        "platform": "2533",
+        "updated": "2025-08-04T16:48:04Z",
+        "view:azimuth": 280.3,
+        "view:off_nadir": 2.1,
+        "view:sun_azimuth": 32.8,
+        "view:sun_elevation": 50.6
+      },
+      "stac_extensions": [
+        "https://planetlabs.github.io/stac-extension/v1.0.0-beta.3/schema.json",
+        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/view/v1.0.0/schema.json"
+      ],
+      "stac_version": "1.0.0",
+      "type": "Feature"
+    }
+  ],
+  "links": [
+    {
+      "href": "https://api.planet.com/x/data/",
+      "rel": "root",
+      "title": "Root Catalog",
+      "type": "application/json"
+    },
+    {
+      "href": "https://api.planet.com/x/data/collections/PSScene/items?limit=2",
+      "rel": "self",
+      "title": "Items List",
+      "type": "application/geo+json"
+    },
+    {
+      "href": "https://api.planet.com/x/data/collections/PSScene",
+      "rel": "collection",
+      "title": "Collection Details",
+      "type": "application/json"
+    }
+  ]
+}
