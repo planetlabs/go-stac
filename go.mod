@@ -1,6 +1,6 @@
 module github.com/planetlabs/go-stac
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -16,7 +16,7 @@ require (
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.27.7
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 )
 
 require (
