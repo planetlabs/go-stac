@@ -18,8 +18,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 5
-    open-pull-requests-limit: 10
-    versioning-strategy: increase-if-necessary
     groups:
       major:
         update-types:
