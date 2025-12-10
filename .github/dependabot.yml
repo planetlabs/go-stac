@@ -5,8 +5,32 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
 
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
+    cooldown:
+      default-days: 5
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    groups:
+      major:
+        update-types:
+          - "major"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      security:
+        applies-to: security-updates
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
