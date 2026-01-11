@@ -11,7 +11,7 @@ require (
 	github.com/google/go-github/v51 v51.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
-	github.com/schollz/progressbar/v3 v3.18.0
+	github.com/schollz/progressbar/v3 v3.19.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tschaub/retry v1.0.0
 	github.com/urfave/cli/v2 v2.27.7
