@@ -183,6 +183,21 @@ func TestResolve(t *testing.T) {
 			expected: "/bam",
 		},
 		{
+			base:     "/base/directory/",
+			input:    "./path/with spaces/some resource",
+			expected: "/base/directory/path/with spaces/some resource",
+		},
+		{
+			base:     "/base/with space/",
+			input:    "./path/with spaces/some resource",
+			expected: "/base/with space/path/with spaces/some resource",
+		},
+		{
+			base:     "/base/with space/",
+			input:    "./path/to/resource",
+			expected: "/base/with space/path/to/resource",
+		},
+		{
 			base:     "/foo/bar/",
 			input:    "https://example.com/bam",
 			expected: "https://example.com/bam",
