@@ -53,6 +53,9 @@ func (l *Locator) MarshalJSON() ([]byte, error) {
 }
 
 func (l *Locator) String() string {
+	if l.file {
+		return l.url.Path
+	}
 	return l.url.String()
 }
 
